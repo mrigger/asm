@@ -175,16 +175,18 @@ def add_asm_sequence(instrs, testcase, note=''):
     conn.commit()
 
 def add_asm_sequence_in_project(sequence, filepath):
-    filepath = filepath.split(os.sep)
-    if filepath[0] != 'projects':
+    splitted_path = filepath.split(os.sep)
+    if splitted_path[0] != 'projects':
         print("please specify the path relative to the projects directory!")
         exit(-1)
-    (owner, project) = filepath[1].split('-')
-    project_file = os.sep.join(filepath[2:])
-    github = 'https://github.com/%s/%s' % (owner, project)
+    dir = os.path.dirname(os.path.realpath(__file__))
+    absolute_path = os.path.join(dir, 'projects/' + splitted_path[1])
+    github = get_git_url(absolute_path)
+    print(github)
     project_id = c.execute('select ID from GithubProject where GITHUB_URL=?', (github, )).fetchone()[0]
     add_asm_sequence(sequence, '')
     sequence_id = c.execute('SELECT ID from AsmSequence WHERE INSTRUCTIONS = ?', (sequence,)).fetchone()[0]
+    project_file = os.sep.join(splitted_path[2:])
     c.execute('insert into AsmSequencesInGithubProject(IN_FILE, GITHUB_PROJECT_ID, ASM_SEQUENCE_ID) VALUES(?, ?, ?)', (project_file, project_id, sequence_id))
     conn.commit()
 
