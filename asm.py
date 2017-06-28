@@ -118,6 +118,9 @@ def get_c_cpp_h_assembly_loc(path):
 def owner_project_from_github_url(url):
     """ Extracts owner and project name from a Github URL. For example, for
         https://github.com/graalvm/sulong it returns the tuple (graalvm, sulong). """
+    if not re.match('https://github.com/([a-z1-9-_]*)/[a-z1-9-_]*', url):
+        print(str(url) + "is not a valid url!")
+        exit(-1)
     elements = url.split('/')
     project_name = elements[-1]
     organization_name = elements[-2]
