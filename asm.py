@@ -276,6 +276,7 @@ elif args.command == 'download-project':
     if args.file is None:
         print("no --file arg")
         exit(-1)
+    download_project(args.file)
 elif args.command == 'add-asm-instruction':
     if args.file is None:
         print("no --file arg")
