@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(description='Manipulate the inline assembler da
 
 parser = argparse.ArgumentParser()
 parser.add_argument('database', metavar='database', help="path to the sqlite3 database")
-parser.add_argument('command', choices=['categories', 'new-project-entry', 'download-project', 'add-asm-instruction'])
+parser.add_argument('command', choices=['categories', 'new-project-entry', 'download-project', 'add-asm-instruction', 'add-asm-sequence'])
 parser.add_argument('--file',help='a file argument')
 parser.add_argument('--instr',help='an instruction argument')
 args = parser.parse_args()
@@ -129,13 +129,17 @@ def owner_project_from_github_url(url):
     organization_name = elements[-2]
     return (organization_name, project_name)
 
-def add_asm_instruction(instr, testcase):
+def add_asm_instruction(instr, testcase=None):
     """ Inserts an instruction with a test case into the database. It reads the test case from the provided file and formats it using clang-format-3.6.
         If a test case for the instruction already exists, it will get updated.
     """
-    process = subprocess.Popen(['clang-format-3.6', '--style=LLVM', testcase], stdout=subprocess.PIPE)
-    stdout, _ = process.communicate()
-    formatted_testcase = stdout.decode()
+    if testcase is not None:
+        process = subprocess.Popen(['clang-format-3.6', '--style=LLVM', testcase], stdout=subprocess.PIPE)
+        stdout, _ = process.communicate()
+        formatted_testcase = stdout.decode()
+    else:
+        formatted_testcase = ''
+
     result = c.execute('SELECT TEST_CASE from AsmInstruction WHERE INSTRUCTION = ?', (instr,)).fetchone()
     if result is None:
         c.execute('insert into AsmInstruction(INSTRUCTION, TEST_CASE) VALUES(?, ?)', (instr, formatted_testcase))
@@ -145,6 +149,25 @@ def add_asm_instruction(instr, testcase):
         print("with new one:")
         print(formatted_testcase)
         c.execute('update AsmInstruction set TEST_CASE=? where INSTRUCTION =?', (formatted_testcase, instr))
+    conn.commit()
+
+def add_asm_sequence(instrs, testcase, note=''):
+    """ Inserts an ordered list of assembly instruction and creates the individual assembly instructions if they do not exist yet. """
+    instr_list = instrs.split('; ')
+    instr_ids = []
+    for instr in instr_list:
+        print(instr)
+        result = c.execute('SELECT ID from AsmInstruction WHERE INSTRUCTION = ?', (instr,)).fetchone()
+        if result is None:
+            add_asm_instruction(instr)
+            result = c.execute('SELECT ID from AsmInstruction WHERE INSTRUCTION = ?', (instr,)).fetchone()
+        instr_ids += result
+    i = 0
+    c.execute('insert into AsmSequence(COMPOUND_TEST_CASE, NOTE, INSTRUCTIONS) VALUES (?, ?, ?)', (testcase, note, instrs))
+    sequence_id = c.execute('SELECT last_insert_rowid()').fetchone()[0]
+    for instruction_id in instr_ids:
+        c.execute('insert into AsmSequenceInstruction(INSTRUCTION_NUMBER, ASM_SEQUENCE_ID, ASM_INSTRUCTION_ID) VALUES(?, ?, ?)', (i, sequence_id, instruction_id))
+        i += 1
     conn.commit()
 
 def insert_project_entry(dirname):
@@ -243,3 +266,9 @@ elif args.command == 'add-asm-instruction':
         print("no --instr arg")
         exit(-1)
     add_asm_instruction(args.instr, args.file)
+elif args.command == 'add-asm-sequence':
+    if args.instr is None:
+        print("no --instr arg")
+        exit(-1)
+    add_asm_sequence(args.instr, args.file)
+
