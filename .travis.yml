@@ -1,3 +1,2 @@
 language: python
-install: "pip install pylint"
-script: "pylint ."
+script: "./test.sh"
