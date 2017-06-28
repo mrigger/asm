@@ -5,6 +5,7 @@ import subprocess
 import urllib.request, json
 import datetime
 import re
+import time
 
 parser = argparse.ArgumentParser(description='Manipulate the inline assembler database.')
 
@@ -53,13 +54,13 @@ def get_git_commiter_count(path):
     return len(committers.split('\n'))
 
 def get_first_last_commit_date(path):
-    """ Gets the first and repository commit. """
+    """ Gets the first and repository commit as a timestamp. """
     # %at specifies a UNIX time stamp
     process = subprocess.Popen(['git', 'log', '--format=%at'], cwd=path, stdout=subprocess.PIPE)
     stdout, _ = process.communicate()
     log = stdout.decode().strip('\n').split('\n')
-    last = datetime.datetime.fromtimestamp(int(log[0]))
-    first = datetime.datetime.fromtimestamp(int(log[-1]))
+    last = int(log[0])
+    first = int(log[-1])
     return (first, last)
 
 def get_git_url(path):
@@ -106,38 +107,78 @@ def insert_project_entry(dirname):
         print(dirname + " is not a directory!")
         exit(-1)
     dirs = dirname.rstrip(os.sep).split(os.sep)
-    url = get_git_url(dirname)
+    github_url = get_git_url(dirname)
     commit_count = get_git_commit_count(dirname)
     committers_count = get_git_commiter_count(dirname)
     (first_date, last_date) = get_first_last_commit_date(dirname)
     project_name = dirs[-1]
-    organization_name = url.split('/')[-2]
-    today = datetime.datetime.today()
+    organization_name = github_url.split('/')[-2]
+    #today = datetime.datetime.today()
     (c_loc, cpp_loc, h_loc, assembly_loc) = get_c_cpp_h_assembly_loc(dirname)
     last_hash = get_last_commit_hash(dirname)
-    print("project name: " + project_name)
-    print("url: " + url)
-    print("commits: " + str(commit_count))
-    print("committers: " + str(committers_count))
-    print("fetch date: " + str(today))
-    print("fetch commit hash: " + str(last_hash))
-    print("first commit: " + str(first_date))
-    print("last commit: " + str(last_date))
-    print("loc c: " + str(c_loc))
-    print("loc h: " + str(h_loc))
-    print("loc c++: " + str(cpp_loc))
-    print("loc assembly: " + str(assembly_loc))
     # retrieve information from Github
     github_json_url = "https://api.github.com/repos/%s/%s" % (organization_name, project_name)
     with urllib.request.urlopen(github_json_url) as url:
         data = json.loads(url.read().decode())
-        print("stargazers: " + str(data['stargazers_count']))
-        print("forks: " + str(data['forks_count']))
-        print("open issues: " + str(data['open_issues_count']))
-        print("description: " + str(data['description']))
-        print("subscribers: " + str(data['subscribers_count']))
-        print("pushed at: " + str(data['pushed_at']))
-        print("Github language: " + data['language'])
+        stargazers = data['stargazers_count']
+        forks = data['forks_count']
+        open_issues = data['open_issues_count']
+        description = data['description']
+        subscribers = data['subscribers_count']
+        creation_date = datetime.datetime.strptime(data['created_at'], "%Y-%m-%dT%H:%M:%SZ").timestamp()
+        language = data['language']
+        query = """insert into GithubProject(
+                GITHUB_PROJECT_NAME,
+                GITHUB_URL,
+                GITHUB_DESCRIPTION,
+                GITHUB_NR_STARGAZERS,
+                GITHUB_NR_SUBSCRIBERS,
+                GITHUB_NR_FORKS,
+                GITHUB_NR_OPEN_ISSUES,
+                GITHUB_REPO_CREATION_DATE,
+                GITHUB_LANGUAGE,
+
+                PULL_HASH,
+                PULL_DATE,
+
+                CLOC_LOC_C,
+                CLOC_LOC_H,
+                CLOC_LOC_ASSEMBLY,
+                CLOC_LOC_CPP,
+
+                GIT_NR_COMMITS,
+                GIT_NR_COMMITTERS,
+                GIT_FIRST_COMMIT_DATE,
+                GIT_LAST_COMMIT_DATE)
+
+                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+
+                """
+        c.execute(query,
+                (project_name,
+                github_url,
+                description,
+                stargazers,
+                subscribers,
+                forks,
+                open_issues,
+                datetime.datetime.fromtimestamp(creation_date).strftime('%Y-%m-%d'),
+                language,
+
+                last_hash,
+                datetime.datetime.now().strftime('%Y-%m-%d'),
+
+                c_loc,
+                h_loc,
+                assembly_loc,
+                cpp_loc,
+
+                commit_count,
+                committers_count,
+                datetime.datetime.fromtimestamp(first_date).strftime('%Y-%m-%d'),
+                datetime.datetime.fromtimestamp(last_date).strftime('%Y-%m-%d'))
+                )
+        conn.commit()
 
 
 if args.command == 'categories':
