@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(description='Manipulate the inline assembler da
 
 parser = argparse.ArgumentParser()
 parser.add_argument('database', metavar='database', help="path to the sqlite3 database")
-parser.add_argument('command', choices=['categories', 'new-project-entry', 'download-project', 'add-asm-instruction', 'add-asm-sequence'])
+parser.add_argument('command', choices=['categories', 'new-project-entry', 'download-project', 'add-asm-instruction', 'add-asm-sequence', 'add-project-asm-sequence'])
 parser.add_argument('--file',help='a file argument')
 parser.add_argument('--instr',help='an instruction argument')
 args = parser.parse_args()
@@ -153,6 +153,10 @@ def add_asm_instruction(instr, testcase=None):
 
 def add_asm_sequence(instrs, testcase, note=''):
     """ Inserts an ordered list of assembly instruction and creates the individual assembly instructions if they do not exist yet. """
+    result = c.execute('SELECT ID from AsmSequence WHERE INSTRUCTIONS=?', (instrs, )).fetchone()
+    if result is not None:
+        print("asm sequence already exists! skiping insertion")
+        return
     instr_list = instrs.split('; ')
     instr_ids = []
     for instr in instr_list:
@@ -168,6 +172,20 @@ def add_asm_sequence(instrs, testcase, note=''):
     for instruction_id in instr_ids:
         c.execute('insert into AsmSequenceInstruction(INSTRUCTION_NUMBER, ASM_SEQUENCE_ID, ASM_INSTRUCTION_ID) VALUES(?, ?, ?)', (i, sequence_id, instruction_id))
         i += 1
+    conn.commit()
+
+def add_asm_sequence_in_project(sequence, filepath):
+    filepath = filepath.split(os.sep)
+    if filepath[0] != 'projects':
+        print("please specify the path relative to the projects directory!")
+        exit(-1)
+    (owner, project) = filepath[1].split('-')
+    project_file = os.sep.join(filepath[2:])
+    github = 'https://github.com/%s/%s' % (owner, project)
+    project_id = c.execute('select ID from GithubProject where GITHUB_URL=?', (github, )).fetchone()[0]
+    add_asm_sequence(sequence, '')
+    sequence_id = c.execute('SELECT ID from AsmSequence WHERE INSTRUCTIONS = ?', (sequence,)).fetchone()[0]
+    c.execute('insert into AsmSequencesInGithubProject(IN_FILE, GITHUB_PROJECT_ID, ASM_SEQUENCE_ID) VALUES(?, ?, ?)', (project_file, project_id, sequence_id))
     conn.commit()
 
 def insert_project_entry(dirname):
@@ -271,4 +289,9 @@ elif args.command == 'add-asm-sequence':
         print("no --instr arg")
         exit(-1)
     add_asm_sequence(args.instr, args.file)
+elif args.command == 'add-project-asm-sequence':
+    if args.instr is None:
+        print("no --instr arg")
+        exit(-1)
+    add_asm_sequence_in_project(args.instr, args.file)
 
