@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(description='Manipulate the inline assembler da
 
 parser = argparse.ArgumentParser()
 parser.add_argument('database', metavar='database', help="path to the sqlite3 database")
-parser.add_argument('command', choices=['categories', 'new-project-entry'])
+parser.add_argument('command', choices=['categories', 'new-project-entry', 'download-project'])
 parser.add_argument('--file',help='a file argument')
 args = parser.parse_args()
 
@@ -74,6 +74,21 @@ def get_git_url(path):
         print(url + " is not a valid url!")
         exit(-1)
 
+
+def download_project(url):
+    dir = os.path.dirname(os.path.realpath(__file__))
+    project_dir = os.path.join(dir, 'projects')
+    dirs = url.rstrip('/').split('/')
+    project_owner = dirs[-2]
+    project_name = dirs[-1]
+    project_dir_name = project_owner + '-' + project_name
+    project_dir_name = os.path.join(project_dir, project_dir_name)
+    print(project_dir_name)
+    process = subprocess.Popen(['git', 'clone', url, project_dir_name], cwd=project_dir)
+    process.communicate()
+    insert_project_entry(os.path.join(project_dir, project_dir_name))
+
+
 def get_c_cpp_h_assembly_loc(path):
     """ Gets the LOC of header and C files using cloc. """
     try:
@@ -111,9 +126,8 @@ def insert_project_entry(dirname):
     commit_count = get_git_commit_count(dirname)
     committers_count = get_git_commiter_count(dirname)
     (first_date, last_date) = get_first_last_commit_date(dirname)
-    project_name = dirs[-1]
+    project_name = github_url.split('/')[-1]
     organization_name = github_url.split('/')[-2]
-    #today = datetime.datetime.today()
     (c_loc, cpp_loc, h_loc, assembly_loc) = get_c_cpp_h_assembly_loc(dirname)
     last_hash = get_last_commit_hash(dirname)
     # retrieve information from Github
@@ -184,7 +198,12 @@ def insert_project_entry(dirname):
 if args.command == 'categories':
     display_application_cats()
 elif args.command == 'new-project-entry':
-  if args.file is None:
-      print("no --file arg")
-      exit(-1)
-  insert_project_entry(args.file)
+    if args.file is None:
+        print("no --file arg")
+        exit(-1)
+    insert_project_entry(args.file)
+elif args.command == 'download-project':
+    if args.file is None:
+        print("no --file arg")
+        exit(-1)
+    download_project(args.file)
