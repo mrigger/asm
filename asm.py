@@ -128,12 +128,21 @@ def owner_project_from_github_url(url):
     return (organization_name, project_name)
 
 def add_asm_instruction(instr, testcase):
-    """ Inserts an instruction with a test case into the database. It reads the test case from the provided file and formats it using clang-format-3.6. """
+    """ Inserts an instruction with a test case into the database. It reads the test case from the provided file and formats it using clang-format-3.6.
+        If a test case for the instruction already exists, it will get updated.
+    """
     process = subprocess.Popen(['clang-format-3.6', '--style=LLVM', testcase], stdout=subprocess.PIPE)
     stdout, _ = process.communicate()
     formatted_testcase = stdout.decode()
-    query = 'insert into AsmInstruction(INSTRUCTION, TEST_CASE) VALUES(?, ?)'
-    c.execute(query, (instr, formatted_testcase))
+    result = c.execute('SELECT TEST_CASE from AsmInstruction WHERE INSTRUCTION = ?', (instr,)).fetchone()
+    if result is None:
+        c.execute('insert into AsmInstruction(INSTRUCTION, TEST_CASE) VALUES(?, ?)', (instr, formatted_testcase))
+    else:
+        print("update existing test case:")
+        print(result[0])
+        print("with new one:")
+        print(formatted_testcase)
+        c.execute('update AsmInstruction set TEST_CASE=? where INSTRUCTION =?', (formatted_testcase, instr))
     conn.commit()
 
 def insert_project_entry(dirname):
