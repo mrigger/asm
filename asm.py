@@ -78,9 +78,7 @@ def get_git_url(path):
 def download_project(url):
     dir = os.path.dirname(os.path.realpath(__file__))
     project_dir = os.path.join(dir, 'projects')
-    dirs = url.rstrip('/').split('/')
-    project_owner = dirs[-2]
-    project_name = dirs[-1]
+    (project_owner, project_name) = owner_project_from_github_url(url)
     project_dir_name = project_owner + '-' + project_name
     project_dir_name = os.path.join(project_dir, project_dir_name)
     print(project_dir_name)
@@ -117,6 +115,14 @@ def get_c_cpp_h_assembly_loc(path):
             assembly_lines = int(assembly_match.groups()[0])
     return (c_lines, cpp_lines, h_lines, assembly_lines)
 
+def owner_project_from_github_url(url):
+    """ Extracts owner and project name from a Github URL. For example, for
+        https://github.com/graalvm/sulong it returns the tuple (graalvm, sulong). """
+    elements = url.split('/')
+    project_name = elements[-1]
+    organization_name = elements[-2]
+    return (organization_name, project_name)
+
 def insert_project_entry(dirname):
     if not os.path.isdir(dirname):
         print(dirname + " is not a directory!")
@@ -126,8 +132,7 @@ def insert_project_entry(dirname):
     commit_count = get_git_commit_count(dirname)
     committers_count = get_git_commiter_count(dirname)
     (first_date, last_date) = get_first_last_commit_date(dirname)
-    project_name = github_url.split('/')[-1]
-    organization_name = github_url.split('/')[-2]
+    (organization_name, project_name) = owner_project_from_github_url(github_url)
     (c_loc, cpp_loc, h_loc, assembly_loc) = get_c_cpp_h_assembly_loc(dirname)
     last_hash = get_last_commit_hash(dirname)
     # retrieve information from Github
