@@ -11,8 +11,9 @@ parser = argparse.ArgumentParser(description='Manipulate the inline assembler da
 
 parser = argparse.ArgumentParser()
 parser.add_argument('database', metavar='database', help="path to the sqlite3 database")
-parser.add_argument('command', choices=['categories', 'new-project-entry', 'download-project'])
+parser.add_argument('command', choices=['categories', 'new-project-entry', 'download-project', 'add-asm-instruction'])
 parser.add_argument('--file',help='a file argument')
+parser.add_argument('--instr',help='an instruction argument')
 args = parser.parse_args()
 
 conn = sqlite3.connect(args.database)
@@ -126,6 +127,15 @@ def owner_project_from_github_url(url):
     organization_name = elements[-2]
     return (organization_name, project_name)
 
+def add_asm_instruction(instr, testcase):
+    """ Inserts an instruction with a test case into the database. It reads the test case from the provided file and formats it using clang-format-3.6. """
+    process = subprocess.Popen(['clang-format-3.6', '--style=LLVM', testcase], stdout=subprocess.PIPE)
+    stdout, _ = process.communicate()
+    formatted_testcase = stdout.decode()
+    query = 'insert into AsmInstruction(INSTRUCTION, TEST_CASE) VALUES(?, ?)'
+    c.execute(query, (instr, formatted_testcase))
+    conn.commit()
+
 def insert_project_entry(dirname):
     if not os.path.isdir(dirname):
         print(dirname + " is not a directory!")
@@ -214,4 +224,11 @@ elif args.command == 'download-project':
     if args.file is None:
         print("no --file arg")
         exit(-1)
-    download_project(args.file)
+elif args.command == 'add-asm-instruction':
+    if args.file is None:
+        print("no --file arg")
+        exit(-1)
+    if args.instr is None:
+        print("no --instr arg")
+        exit(-1)
+    add_asm_instruction(args.instr, args.file)
