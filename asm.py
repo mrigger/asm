@@ -79,7 +79,7 @@ def get_git_url(path):
         exit(-1)
 
 
-def download_project(url):
+def download_project(url, keywords=None):
     dir = os.path.dirname(os.path.realpath(__file__))
     project_dir = os.path.join(dir, 'projects')
     (project_owner, project_name) = owner_project_from_github_url(url)
@@ -89,7 +89,7 @@ def download_project(url):
     process = subprocess.Popen(['git', 'clone', url, project_dir_name], cwd=project_dir)
     process.communicate()
     insert_project_entry(os.path.join(project_dir, project_dir_name))
-
+    add_keywords_to_project(url, keywords)
 
 def get_c_cpp_h_assembly_loc(path):
     """ Gets the LOC of header and C files using cloc. """
@@ -300,7 +300,7 @@ elif args.command == 'download-project':
     if args.file is None:
         print("no --file arg")
         exit(-1)
-    download_project(args.file)
+    download_project(args.file, args.keywords)
 elif args.command == 'add-asm-instruction':
     if args.file is None:
         print("no --file arg")
