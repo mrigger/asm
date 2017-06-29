@@ -25,9 +25,10 @@ c = conn.cursor()
 
 def print_sub_cat(super_id, tabs="\t"):
    """ display sub categories of a certain id. """
-   for row in c.execute('select * from ApplicationCategory where SUPER_ID =?;', (str(super_id),)).fetchall():
+   rows = c.execute('select * from ApplicationCategory where SUPER_ID =?;', (str(super_id),)).fetchall()
+   for row in rows:
       print(tabs + row[1])
-      print_sub_cat(tabs + '\t', row[0])
+      print_sub_cat(row[0], tabs + '\t')
 
 def display_application_cats():
     """ Recursively displays all application categories. """
