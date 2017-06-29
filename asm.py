@@ -199,11 +199,12 @@ def insert_project_keyword(keyword):
     keyword_id = c.execute('SELECT ID from ApplicationCategory WHERE NAME = ?', (keyword, )).fetchone()
     if keyword_id is None:
         c.execute('insert into ApplicationCategory(NAME) VALUES (?)', (keyword, ))
-        keyword_id = c.execute('SELECT last_insert_rowid()').fetchone()[0]
-    return keyword_id
+        return c.execute('SELECT last_insert_rowid()').fetchone()[0]
+    else:
+        return keyword_id[0]
 
 def add_keywords_to_project(url, keywords):
-    keyword_tokens = keywords.split(';, ')
+    keyword_tokens = keywords.split(',')
     project_id = get_project_id(url)
     for keyword in keyword_tokens:
         keyword_id = insert_project_keyword(keyword)
