@@ -13,9 +13,10 @@ parser = argparse.ArgumentParser(description='Manipulate the inline assembler da
 
 parser = argparse.ArgumentParser()
 parser.add_argument('database', metavar='database', help="path to the sqlite3 database")
-parser.add_argument('command', choices=['categories', 'new-project-entry', 'download-project', 'add-asm-instruction', 'add-asm-sequence', 'add-project-asm-sequence'])
+parser.add_argument('command', choices=['categories', 'new-project-entry', 'download-project', 'add-asm-instruction', 'add-asm-sequence', 'add-project-asm-sequence', 'add-project-keywords'])
 parser.add_argument('--file',help='a file argument')
 parser.add_argument('--instr',help='an instruction argument')
+parser.add_argument('--keywords',help='specify keywords')
 args = parser.parse_args()
 
 conn = sqlite3.connect(args.database)
@@ -183,11 +184,32 @@ def add_asm_sequence_in_project(sequence, filepath):
     absolute_path = os.path.join(dir, 'projects/' + splitted_path[1])
     github = get_git_url(absolute_path)
     print(github)
-    project_id = c.execute('select ID from GithubProject where GITHUB_URL=?', (github, )).fetchone()[0]
+    project_id = get_project_id(github)
     add_asm_sequence(sequence, '')
     sequence_id = c.execute('SELECT ID from AsmSequence WHERE INSTRUCTIONS = ?', (sequence,)).fetchone()[0]
     project_file = os.sep.join(splitted_path[2:])
     c.execute('insert into AsmSequencesInGithubProject(IN_FILE, GITHUB_PROJECT_ID, ASM_SEQUENCE_ID) VALUES(?, ?, ?)', (project_file, project_id, sequence_id))
+    conn.commit()
+
+def get_project_id(github_url):
+    return c.execute('select ID from GithubProject where GITHUB_URL=?', (github_url, )).fetchone()[0]
+
+def insert_project_keyword(keyword):
+    """ Inserts a project keyword if it does not exist. Returns the keyword id of the (potentially inserted) keyword. """
+    keyword_id = c.execute('SELECT ID from ApplicationCategory WHERE NAME = ?', (keyword, )).fetchone()
+    if keyword_id is None:
+        c.execute('insert into ApplicationCategory(NAME) VALUES (?)', (keyword, ))
+        keyword_id = c.execute('SELECT last_insert_rowid()').fetchone()[0]
+    return keyword_id
+
+def add_keywords_to_project(url, keywords):
+    keyword_tokens = keywords.split(';, ')
+    project_id = get_project_id(url)
+    for keyword in keyword_tokens:
+        keyword_id = insert_project_keyword(keyword)
+        existing_record = c.execute('SELECT * FROM ApplicationCategoriesPerProject WHERE ApplicationCategoryID = ? AND GithubProjectID = ?', (keyword_id, project_id))
+        if project_id is not None:
+            c.execute('insert into ApplicationCategoriesPerProject(ApplicationCategoryID, GithubProjectID) VALUES(?, ?)', (keyword_id, project_id))
     conn.commit()
 
 def insert_project_entry(dirname):
@@ -296,5 +318,12 @@ elif args.command == 'add-project-asm-sequence':
     if args.instr is None:
         print("no --instr arg")
         exit(-1)
-    add_asm_sequence_in_project(args.instr, args.file)
+elif args.command == 'add-project-keywords':
+    if args.file is None:
+        print("no --file arg")
+        exit(-1)
+    if args.keywords is None:
+        print("no --keywords arg")
+        exit(-1)
+    add_keywords_to_project(args.file, args.keywords)
 
