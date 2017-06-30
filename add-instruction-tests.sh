@@ -8,3 +8,4 @@
 ./asm.py database.db add-asm-instruction --file=test-cases/crc32l.c --instr=crc32l
 ./asm.py database.db add-asm-instruction --file=test-cases/crc32q.c --instr=crc32q
 ./asm.py database.db add-asm-instruction --file=test-cases/crc32w.c --instr=crc32w
+./asm.py database.db add-asm-instruction --file=test-cases/mfence.c --instr=mfence
