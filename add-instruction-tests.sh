@@ -4,3 +4,7 @@
 ./asm.py database.db add-asm-instruction --file=test-cases/empty.c --instr=""
 ./asm.py database.db add-asm-instruction --file=test-cases/xgetbv.c --instr=xgetbv
 ./asm.py database.db add-asm-instruction --file=test-cases/bsrl.c --instr=bsrl
+./asm.py database.db add-asm-instruction --file=test-cases/crc32b.c --instr=crc32b
+./asm.py database.db add-asm-instruction --file=test-cases/crc32l.c --instr=crc32l
+./asm.py database.db add-asm-instruction --file=test-cases/crc32q.c --instr=crc32q
+./asm.py database.db add-asm-instruction --file=test-cases/crc32w.c --instr=crc32w
