@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(description='Manipulate the inline assembler da
 
 parser = argparse.ArgumentParser()
 parser.add_argument('database', metavar='database', help="path to the sqlite3 database")
-parser.add_argument('command', choices=['categories', 'new-project-entry', 'download-project', 'add-asm-instruction', 'add-asm-sequence', 'add-project-asm-sequence', 'add-project-keywords'])
+parser.add_argument('command', choices=['categories', 'new-project-entry', 'download-project', 'add-asm-instruction', 'add-asm-sequence', 'add-project-asm-sequence', 'add-project-keywords', 'show-stats'])
 parser.add_argument('--file',help='a file argument')
 parser.add_argument('--instr',help='an instruction argument')
 parser.add_argument('--keywords',help='specify keywords')
@@ -208,6 +208,12 @@ def insert_project_keyword(keyword):
     else:
         return keyword_id[0]
 
+def show_stats():
+    print("Instruction count over all projects and sequences:")
+    for row in c.execute('SELECT AsmInstruction.ID, AsmInstruction.INSTRUCTION, SUM(AsmSequencesInGithubProject.NR_OCCURRENCES) total_count FROM AsmSequenceInstruction, AsmInstruction, AsmSequencesInGithubProject WHERE AsmInstruction.ID = AsmSequenceInstruction.ASM_INSTRUCTION_ID AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID GROUP BY AsmInstruction.INSTRUCTION, AsmInstruction.ID ORDER BY total_count DESC'):
+        print("{:<20} {:<10}".format(row[1], row[2]))
+        #print("'%s' \t %d" % (row[1], row[2]))
+
 def add_keywords_to_project(url, keywords):
     keyword_tokens = keywords.split(',')
     project_id = get_project_id(url)
@@ -341,4 +347,6 @@ elif args.command == 'add-project-keywords':
         print("no --keywords arg")
         exit(-1)
     add_keywords_to_project(args.file, args.keywords)
+elif args.command == 'show-stats':
+    show_stats()
 
