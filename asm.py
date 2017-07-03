@@ -22,6 +22,9 @@ args = parser.parse_args()
 conn = sqlite3.connect(args.database)
 c = conn.cursor()
 
+dir = os.path.dirname(os.path.realpath(__file__))
+project_dir = os.path.join(dir, 'projects')
+grep_exec = os.path.join(dir, 'grep.sh')
 
 def print_sub_cat(super_id, tabs="\t"):
    """ display sub categories of a certain id. """
@@ -79,14 +82,15 @@ def get_git_url(path):
         print(url + " is not a valid url!")
         exit(-1)
 
-
-def download_project(url, keywords=None):
-    dir = os.path.dirname(os.path.realpath(__file__))
-    project_dir = os.path.join(dir, 'projects')
+def get_project_dir(url):
+    """ Map a Github URL to the local Github project directory. """
     (project_owner, project_name) = owner_project_from_github_url(url)
     project_dir_name = project_owner + '-' + project_name
     project_dir_name = os.path.join(project_dir, project_dir_name)
-    print(project_dir_name)
+    return project_dir_name
+
+def download_project(url, keywords=None):
+    project_dir_name = get_project_dir(url)
     process = subprocess.Popen(['git', 'clone', url, project_dir_name], cwd=project_dir)
     process.communicate()
     insert_project_entry(os.path.join(project_dir, project_dir_name))
@@ -159,7 +163,7 @@ def add_asm_sequence(instrs, testcase, note=''):
     if result is not None:
         print("asm sequence already exists! skiping insertion")
         return
-    instr_list = instrs.split('; ')
+    instr_list = instrs.split(';')
     instr_ids = []
     for instr in instr_list:
         print(instr)
@@ -290,6 +294,12 @@ def insert_project_entry(dirname):
                 )
         conn.commit()
 
+def grep_project(url):
+    """ Executes the grep.sh script on the project directory. """
+    project = get_project_dir(url)
+    print(grep_exec + ' ' + project)
+    process = subprocess.Popen(['bash', grep_exec, project])
+    process.communicate()
 
 if args.command == 'categories':
     display_application_cats()
@@ -298,11 +308,13 @@ elif args.command == 'new-project-entry':
         print("no --file arg")
         exit(-1)
     insert_project_entry(args.file)
+    grep_project(args.file)
 elif args.command == 'download-project':
     if args.file is None:
         print("no --file arg")
         exit(-1)
     download_project(args.file, args.keywords)
+    grep_project(args.file)
 elif args.command == 'add-asm-instruction':
     if args.file is None:
         print("no --file arg")
@@ -320,6 +332,7 @@ elif args.command == 'add-project-asm-sequence':
     if args.instr is None:
         print("no --instr arg")
         exit(-1)
+    add_asm_sequence_in_project(args.instr, args.file)
 elif args.command == 'add-project-keywords':
     if args.file is None:
         print("no --file arg")
