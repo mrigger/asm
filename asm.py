@@ -58,7 +58,7 @@ def get_git_commiter_count(path):
     """ Gets the number of committers from a Git repository. """
     process = subprocess.Popen(['git', 'shortlog', '-sn'], cwd=path, stdout=subprocess.PIPE)
     stdout, _ = process.communicate()
-    committers = stdout.decode()
+    committers = stdout.decode("ISO-8859-1")
     return len(committers.split('\n'))
 
 def get_first_last_commit_date(path):
