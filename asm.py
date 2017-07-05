@@ -208,11 +208,32 @@ def insert_project_keyword(keyword):
     else:
         return keyword_id[0]
 
+def print_query_as_command(command, query):
+    print('\\newcommand{\\%s}{%s}' % (command, c.execute(query).fetchone()[0], ))
+
 def show_stats():
     print("Instruction count over all projects and sequences:")
     for row in c.execute('SELECT AsmInstruction.ID, AsmInstruction.INSTRUCTION, SUM(AsmSequencesInGithubProject.NR_OCCURRENCES) total_count FROM AsmSequenceInstruction, AsmInstruction, AsmSequencesInGithubProject WHERE AsmInstruction.ID = AsmSequenceInstruction.ASM_INSTRUCTION_ID AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID GROUP BY AsmInstruction.INSTRUCTION, AsmInstruction.ID ORDER BY total_count DESC'):
         print("{:<20} {:<10}".format(row[1], row[2]))
         #print("'%s' \t %d" % (row[1], row[2]))
+
+    print('% total LOC of .c and .h files')
+    print_query_as_command('total_loc', 'SELECT SUM(CLOC_LOC_H+CLOC_LOC_C) FROM GithubProject;')
+    print('% total number of projects')
+    print_query_as_command('total_nr_projects', 'SELECT COUNT(*) FROM GithubProject;')
+    print('% number of projects where we checked the usage of inline assembly')
+    print_query_as_command('nr_checked_projects', 'SELECT COUNT(*) from GithubProject WHERE ANALYZED_FOR_INLINE_ASM=1')
+    print('% number of projects where we did not yet check the usage of inline assembly')
+    print_query_as_command('nr_unchecked_projects', 'SELECT COUNT(*) from GithubProject WHERE ANALYZED_FOR_INLINE_ASM!=1')
+    print('% projects that contain one or more inline assembly sequences')
+    print_query_as_command('nr_projects_with_inline_asm', 'SELECT ((SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) from AsmSequencesInGithubProject) + (SELECT COUNT(*) from GithubProject WHERE ANALYZED_FOR_INLINE_ASM!=1))')
+    print('% average number of inline assembly snippets computed over the set of projects that use inline assembly')
+    print_query_as_command('avg_nr_inline_assembly_snippets', 'SELECT AVG(number) FROM (SELECT SUM(NR_OCCURRENCES) as number FROM AsmSequencesInGithubProject GROUP BY GITHUB_PROJECT_ID);')
+    print('% average number of UNIQUE (on a file basis) inline assembly snippets computed over the set of projects that use inline assembly')
+    print_query_as_command('avg_nr_fileunique_inline_assembly_snippets', 'SELECT AVG(number) FROM (SELECT COUNT(*) as number FROM AsmSequencesInGithubProject GROUP BY GITHUB_PROJECT_ID);')
+    print('% total number of inline assembly snippets')
+    print_query_as_command('nr_inline_assembly_snippets', 'SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesInGithubProject;')
+
 
 def add_keywords_to_project(url, keywords):
     keyword_tokens = keywords.split(',')
