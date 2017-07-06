@@ -254,6 +254,12 @@ def show_stats():
     print_query_as_command('avgNrFileuniqueInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT COUNT(*) as number FROM AsmSequencesInGithubProject GROUP BY GITHUB_PROJECT_ID);')
     print('% total number of inline assembly snippets')
     print_query_as_command('nrInlineAssemblySnippets', 'SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesInGithubProject;')
+    print('% number of inline snippets with mnemonics')
+    print_query_as_command('nrInlineSnippetsWithMnemonics', 'SELECT COUNT(*) FROM AsmSequencesInGithubProject WHERE MNEMONIC = 1')
+    print('% number of inline snippets without mnemonics')
+    print_query_as_command('nrInlineSnippetsWithoutMnemonics', 'SELECT COUNT(*) FROM AsmSequencesInGithubProject WHERE MNEMONIC = 0')
+    print('% percentage of inline snippets that contain at least one non-mnemonic instruction')
+    print_query_as_command('percentageInlineSnippetsWithoutMnemonics', 'SELECT AVG(MNEMONIC = 0) * 100 FROM AsmSequencesInGithubProject')
     # SELECT AsmInstruction.ID, AsmInstruction.INSTRUCTION, (SELECT COUNT(DISTINCT AsmSequencesInGithubProject.Github_PROJECT_ID) FROM AsmSequenceInstruction, AsmSequencesInGithubProject WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = AsmInstruction.ID AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID) FROM AsmInstruction;
     # SELECT * FROM AsmSequenceInstruction WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = 9
     # SELECT COUNT(DISTINCT AsmSequencesInGithubProject.Github_PROJECT_ID) FROM AsmSequenceInstruction, AsmSequencesInGithubProject WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = 7 AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID
