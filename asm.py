@@ -193,11 +193,11 @@ def add_asm_sequence_in_project(sequence, filepath):
     add_asm_sequence(sequence, '')
     sequence_id = c.execute('SELECT ID from AsmSequence WHERE INSTRUCTIONS = ?', (sequence,)).fetchone()[0]
     project_file = os.sep.join(splitted_path[2:])
-    c.execute('insert into AsmSequencesInGithubProject(IN_FILE, GITHUB_PROJECT_ID, ASM_SEQUENCE_ID) VALUES(?, ?, ?)', (project_file, project_id, sequence_id))
+    c.execute('insert into AsmSequencesInGithubProjectUnfiltered(IN_FILE, GITHUB_PROJECT_ID, ASM_SEQUENCE_ID) VALUES(?, ?, ?)', (project_file, project_id, sequence_id))
     conn.commit()
 
 def get_project_id(github_url):
-    return c.execute('select ID from GithubProject where GITHUB_URL=?', (github_url, )).fetchone()[0]
+    return c.execute('select ID from GithubProjectUnfiltered where GITHUB_URL=?', (github_url, )).fetchone()[0]
 
 def insert_project_keyword(keyword):
     """ Inserts a project keyword if it does not exist. Returns the keyword id of the (potentially inserted) keyword. """
@@ -208,11 +208,12 @@ def insert_project_keyword(keyword):
     else:
         return keyword_id[0]
 
-def print_query_as_command(command, query):
-    print('\\newcommand{\\%s}{%s}' % (command, c.execute(query).fetchone()[0], ))
+def print_query_as_command(command, query, percentage=False):
+    print_as_command(command, c.execute(query).fetchone()[0], percentage)
 
-def print_as_command(command, content):
-    print('\\newcommand{\\%s}{%s}' % (command, content, ))
+def print_as_command(command, content, percentage=False):
+    formats = '%.1f' if percentage else '%s'
+    print(('\\newcommand{\\%s}{' + formats + '}') % (command, content, ))
 
 
 def show_stats():
@@ -249,9 +250,9 @@ def show_stats():
     print('% projects that contain one or more inline assembly sequences')
     print_query_as_command('nrProjectsWithInlineAsm', 'SELECT ((SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) from AsmSequencesInGithubProject) + (SELECT COUNT(*) from GithubProject WHERE ANALYZED_FOR_INLINE_ASM!=1))')
     print('% average number of inline assembly snippets computed over the set of projects that use inline assembly')
-    print_query_as_command('avgNrInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT SUM(NR_OCCURRENCES) as number FROM AsmSequencesInGithubProject GROUP BY GITHUB_PROJECT_ID);')
+    print_query_as_command('avgNrInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT SUM(NR_OCCURRENCES) as number FROM AsmSequencesInGithubProject GROUP BY GITHUB_PROJECT_ID);', percentage=True)
     print('% average number of UNIQUE (on a file basis) inline assembly snippets computed over the set of projects that use inline assembly')
-    print_query_as_command('avgNrFileuniqueInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT COUNT(*) as number FROM AsmSequencesInGithubProject GROUP BY GITHUB_PROJECT_ID);')
+    print_query_as_command('avgNrFileuniqueInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT COUNT(*) as number FROM AsmSequencesInGithubProject GROUP BY GITHUB_PROJECT_ID);', percentage=True)
     print('% total number of inline assembly snippets')
     print_query_as_command('nrInlineAssemblySnippets', 'SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesInGithubProject;')
     print('% number of inline snippets with mnemonics')
@@ -259,7 +260,7 @@ def show_stats():
     print('% number of inline snippets without mnemonics')
     print_query_as_command('nrInlineSnippetsWithoutMnemonics', 'SELECT COUNT(*) FROM AsmSequencesInGithubProject WHERE MNEMONIC = 0')
     print('% percentage of inline snippets that contain at least one non-mnemonic instruction')
-    print_query_as_command('percentageInlineSnippetsWithoutMnemonics', 'SELECT AVG(MNEMONIC = 0) * 100 FROM AsmSequencesInGithubProject')
+    print_query_as_command('percentageInlineSnippetsWithoutMnemonics', 'SELECT AVG(MNEMONIC = 0) * 100 FROM AsmSequencesInGithubProject', percentage=True)
     # SELECT AsmInstruction.ID, AsmInstruction.INSTRUCTION, (SELECT COUNT(DISTINCT AsmSequencesInGithubProject.Github_PROJECT_ID) FROM AsmSequenceInstruction, AsmSequencesInGithubProject WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = AsmInstruction.ID AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID) FROM AsmInstruction;
     # SELECT * FROM AsmSequenceInstruction WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = 9
     # SELECT COUNT(DISTINCT AsmSequencesInGithubProject.Github_PROJECT_ID) FROM AsmSequenceInstruction, AsmSequencesInGithubProject WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = 7 AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID
@@ -297,7 +298,7 @@ def insert_project_entry(dirname):
         subscribers = data['subscribers_count']
         creation_date = datetime.datetime.strptime(data['created_at'], "%Y-%m-%dT%H:%M:%SZ").timestamp()
         language = data['language']
-        query = """insert into GithubProject(
+        query = """insert into GithubProjectUnfiltered(
                 GITHUB_PROJECT_NAME,
                 GITHUB_URL,
                 GITHUB_DESCRIPTION,
