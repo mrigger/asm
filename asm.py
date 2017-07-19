@@ -167,7 +167,7 @@ def check_for_invalid_instructions(instrs):
             print('Please specifiy the prefix as part of the next instruction, for example, "lock xadd" instead of "lock;xadd".')
             exit(-1)
         if instr == 'rep nop':
-            print('Insert "rep nop" as pause!')
+            print('Please insert "rep nop" as pause (MNEMONIC is 0)!')
             exit(-1)
 
 def add_asm_sequence(instrs, testcase, note=''):
@@ -176,7 +176,7 @@ def add_asm_sequence(instrs, testcase, note=''):
     if result is not None:
         print("asm sequence already exists! skiping insertion")
         return
-    instr_list = instrs.split(';')
+    instr_list = instrs.replace(',', ';').split(';')
     check_for_invalid_instructions(instr_list)
     instr_ids = []
     for instr in instr_list:
