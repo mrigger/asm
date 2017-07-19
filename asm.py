@@ -234,6 +234,21 @@ def print_as_command(command, content, percentage=False):
     formats = '%.1f' if percentage else '%s'
     print(('\\newcommand{\\%s}{' + formats + '}') % (command, content, ))
 
+def escape_latex(str):
+    return str.replace('#', '\#').replace('$', '\$')
+
+def print_instruction_table(nr_instructions=3):
+    # print latex table
+    print("""\\begin{table}[]
+\\centering
+\\begin{tabular}{|l|l|}
+\\hline""")
+    for row in c.execute('SELECT AsmInstruction.ID, AsmInstruction.INSTRUCTION, (SELECT COUNT(DISTINCT AsmSequencesInGithubProject.Github_PROJECT_ID) FROM AsmSequenceInstruction, AsmSequencesInGithubProject WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = AsmInstruction.ID AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID) count FROM AsmInstruction WHERE count >= ' + str(nr_instructions) + ' ORDER BY count desc;'):
+        print("%s & %s \\\\ \hline" % (escape_latex(row[1]), row[2]))
+    print("""\\end{tabular}
+\\caption{The most common instructions}
+\\label{tbl:common-instructions}
+\\end{table}""")
 
 def show_stats():
     #print("Instruction count over all projects and sequences:")
@@ -243,7 +258,7 @@ def show_stats():
     print("Number of times an instruction is contained in different projects:")
     for row in c.execute('SELECT AsmInstruction.ID, AsmInstruction.INSTRUCTION, (SELECT COUNT(DISTINCT AsmSequencesInGithubProject.Github_PROJECT_ID) FROM AsmSequenceInstruction, AsmSequencesInGithubProject WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = AsmInstruction.ID AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID) count FROM AsmInstruction ORDER BY count desc;'):
         print("{:<20} {:<10}".format(row[1], row[2]))
-
+    print_instruction_table()
     print('% how often an instruction appears in different projects')
     for row in c.execute('SELECT AsmInstruction.ID, AsmInstruction.INSTRUCTION, (SELECT COUNT(DISTINCT AsmSequencesInGithubProject.Github_PROJECT_ID) FROM AsmSequenceInstruction, AsmSequencesInGithubProject WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = AsmInstruction.ID AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID) count FROM AsmInstruction ORDER BY count desc;'):
         instr_name = row[1].replace(' ', '')
