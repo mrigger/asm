@@ -243,7 +243,7 @@ def print_instruction_table(nr_instructions=3):
 \\centering
 \\begin{tabular}{|l|l|}
 \\hline""")
-    for row in c.execute('SELECT AsmInstruction.ID, AsmInstruction.INSTRUCTION, (SELECT COUNT(DISTINCT AsmSequencesInGithubProject.Github_PROJECT_ID) FROM AsmSequenceInstruction, AsmSequencesInGithubProject WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = AsmInstruction.ID AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID) count FROM AsmInstruction WHERE count >= ' + str(nr_instructions) + ' ORDER BY count desc;'):
+    for row in c.execute('SELECT * FROM  InlineAssemblyInstructionsInProjects WHERE count >= ' + str(nr_instructions) + ' ORDER BY count desc;'):
         print("%s & %s \\\\ \hline" % (escape_latex(row[1]), row[2]))
     print("""\\end{tabular}
 \\caption{The most common instructions}
@@ -256,11 +256,11 @@ def show_stats():
     #    print("{:<20} {:<10}".format(row[1], row[2]))
     #    print("'%s' \t %d" % (row[1], row[2]))
     print("Number of times an instruction is contained in different projects:")
-    for row in c.execute('SELECT AsmInstruction.ID, AsmInstruction.INSTRUCTION, (SELECT COUNT(DISTINCT AsmSequencesInGithubProject.Github_PROJECT_ID) FROM AsmSequenceInstruction, AsmSequencesInGithubProject WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = AsmInstruction.ID AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID) count FROM AsmInstruction ORDER BY count desc;'):
+    for row in c.execute('SELECT * FROM InlineAssemblyInstructionsInProjects ORDER BY count desc;'):
         print("{:<20} {:<10}".format(row[1], row[2]))
     print_instruction_table()
     print('% how often an instruction appears in different projects')
-    for row in c.execute('SELECT AsmInstruction.ID, AsmInstruction.INSTRUCTION, (SELECT COUNT(DISTINCT AsmSequencesInGithubProject.Github_PROJECT_ID) FROM AsmSequenceInstruction, AsmSequencesInGithubProject WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = AsmInstruction.ID AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID) count FROM AsmInstruction ORDER BY count desc;'):
+    for row in c.execute('SELECT * FROM InlineAssemblyInstructionsInProjects ORDER BY count desc;'):
         instr_name = row[1].replace(' ', '')
         replacements = {
             '' : 'noInstr', # compiler/memory barrier
