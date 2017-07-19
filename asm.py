@@ -235,10 +235,13 @@ def show_stats():
             'int$0x80' : 'intsystemcall', # system call interrupt
             'crc32' : 'crc',
             'cvtsd2si' : 'cvtsdtosi',
-            'ud2' : 'ud'
+            'ud2' : 'ud',
+            '<name>' : 'declarativeName',
+            '<register>' : 'register'
         }
         instr_name = replacements.get(instr_name, instr_name)
         print_as_command(instr_name + 'ProjectCount', row[2])
+    # SELECT COUNT(*) / (SELECT COUNT(*)*1.0 FROM GithubProject WHERE GITHUB_NR_STARGAZERS > 1000) FROM GithubProjectWithInlineAsm WHERE GITHUB_NR_STARGAZERS > 1000
     print('% total LOC of .c and .h files')
     print_query_as_command('loc', 'SELECT SUM(CLOC_LOC_H+CLOC_LOC_C) FROM GithubProject;')
     print('% total number of projects')
@@ -248,7 +251,9 @@ def show_stats():
     print('% number of projects where we did not yet check the usage of inline assembly')
     print_query_as_command('nrUncheckedProjects', 'SELECT COUNT(*) from GithubProject WHERE ANALYZED_FOR_INLINE_ASM!=1')
     print('% projects that contain one or more inline assembly sequences')
-    print_query_as_command('nrProjectsWithInlineAsm', 'SELECT ((SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) from AsmSequencesInGithubProject) + (SELECT COUNT(*) from GithubProject WHERE ANALYZED_FOR_INLINE_ASM!=1))')
+    print_query_as_command('nrProjectsWithInlineAsm', 'SELECT COUNT(*) FROM GithubProjectWithInlineAsm')
+    print('% percentage of projects that contain one or more inline assembly sequences')
+    print_query_as_command('percentageProjectsWithInlineAsm', 'SELECT COUNT(*)*100 / (SELECT COUNT(*)*1.0 FROM GithubProject) FROM GithubProjectWithInlineAsm', percentage=True)
     print('% average number of inline assembly snippets computed over the set of projects that use inline assembly')
     print_query_as_command('avgNrInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT SUM(NR_OCCURRENCES) as number FROM AsmSequencesInGithubProject GROUP BY GITHUB_PROJECT_ID);', percentage=True)
     print('% average number of UNIQUE (on a file basis) inline assembly snippets computed over the set of projects that use inline assembly')
