@@ -157,13 +157,17 @@ def add_asm_instruction(instr, testcase=None):
         c.execute('update AsmInstruction set TEST_CASE=? where INSTRUCTION =?', (formatted_testcase, instr))
     conn.commit()
 
-def check_no_prefix(instrs):
-    """ Checks that a list of instruction does not contain any x86 instruction prefixes """
+def check_for_invalid_instructions(instrs):
+    """ Checks that a list of instruction does not contain any invalid instructions (not the right format) """
     for instr in instrs:
+        # Check for x86 instruction prefixes
         # see http://www.c-jump.com/CIS77/CPU/x86/X77_0240_prefix.htm
         if instr in ['lock', 'rep', 'repne']:
             print('The instruction sequence contains the instruction prefix ' + instr + '.')
             print('Please specifiy the prefix as part of the next instruction, for example, "lock xadd" instead of "lock;xadd".')
+            exit(-1)
+        if instr == 'rep nop':
+            print('Insert "rep nop" as pause!')
             exit(-1)
 
 def add_asm_sequence(instrs, testcase, note=''):
@@ -173,7 +177,7 @@ def add_asm_sequence(instrs, testcase, note=''):
         print("asm sequence already exists! skiping insertion")
         return
     instr_list = instrs.split(';')
-    check_no_prefix(instr_list)
+    check_for_invalid_instructions(instr_list)
     instr_ids = []
     for instr in instr_list:
         print(instr)
