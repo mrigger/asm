@@ -169,6 +169,11 @@ def check_for_invalid_instructions(instrs):
         if instr == 'rep nop':
             print('Please insert "rep nop" as pause (MNEMONIC is 0)!')
             exit(-1)
+        # check the interrupt format
+        if re.match('int .*', instr):
+            if not re.match('int \$0x[0-9a-f]{2}', instr):
+                print('Please use the format "int $0xa3" to specify numbers in int instructions!')
+                exit(-1)
 
 def add_asm_sequence(instrs, testcase, note=''):
     """ Inserts an ordered list of assembly instruction and creates the individual assembly instructions if they do not exist yet. """
