@@ -243,10 +243,10 @@ def print_instruction_table(nr_instructions=3):
     # print latex table
     print("""\\begin{table}[]
 \\centering
-\\begin{tabular}{|l|l|}
+\\begin{tabular}{|l|l|l|}
 \\hline""")
-    for row in c.execute('SELECT * FROM  InlineAssemblyInstructionsInProjects WHERE count >= ' + str(nr_instructions) + ' ORDER BY count desc;'):
-        print("%s & %s \\\\ \hline" % (escape_latex(row[1]), row[2]))
+    for row in c.execute('SELECT *, 100. * count / (SELECT SUM(count) FROM InlineAssemblyInstructionsInProjects) AS percentage FROM InlineAssemblyInstructionsInProjects WHERE count >= ' + str(nr_instructions) + ' ORDER BY count desc;'):
+        print("%s & %s & %.1f\%% \\\\ \hline" % (escape_latex(row[1]), row[2], row[3]))
     print("""\\end{tabular}
 \\caption{The most common instructions}
 \\label{tbl:common-instructions}
