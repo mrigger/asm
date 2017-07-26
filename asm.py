@@ -227,11 +227,13 @@ def insert_project_keyword(keyword):
     else:
         return keyword_id[0]
 
-def print_query_as_command(command, query, percentage=False):
-    print_as_command(command, c.execute(query).fetchone()[0], percentage)
+def print_query_as_command(command, query, roundn=False, percentage=False):
+    print_as_command(command, c.execute(query).fetchone()[0], roundn, percentage)
 
-def print_as_command(command, content, percentage=False):
-    formats = '%.1f' if percentage else '%s'
+def print_as_command(command, content, roundn=False, percentage=False):
+    formats = '%.1f' if roundn or percentage else '%s'
+    if percentage:
+        formats = formats + '\%%'
     print(('\\newcommand{\\%s}{' + formats + '}') % (command, content, ))
 
 def escape_latex(str):
@@ -289,9 +291,9 @@ def show_stats():
     print('% percentage of projects that contain one or more inline assembly sequences')
     print_query_as_command('percentageProjectsWithInlineAsm', 'SELECT COUNT(*)*100 / (SELECT COUNT(*)*1.0 FROM GithubProject) FROM GithubProjectWithInlineAsm', percentage=True)
     print('% average number of inline assembly snippets computed over the set of projects that use inline assembly')
-    print_query_as_command('avgNrInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT SUM(NR_OCCURRENCES) as number FROM AsmSequencesInGithubProject GROUP BY GITHUB_PROJECT_ID);', percentage=True)
+    print_query_as_command('avgNrInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT SUM(NR_OCCURRENCES) as number FROM AsmSequencesInGithubProject GROUP BY GITHUB_PROJECT_ID);', roundn=True)
     print('% average number of UNIQUE (on a file basis) inline assembly snippets computed over the set of projects that use inline assembly')
-    print_query_as_command('avgNrFileuniqueInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT COUNT(*) as number FROM AsmSequencesInGithubProject GROUP BY GITHUB_PROJECT_ID);', percentage=True)
+    print_query_as_command('avgNrFileuniqueInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT COUNT(*) as number FROM AsmSequencesInGithubProject GROUP BY GITHUB_PROJECT_ID);', roundn=True)
     print('% total number of inline assembly snippets')
     print_query_as_command('nrInlineAssemblySnippets', 'SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesInGithubProject;')
     print('% number of inline snippets with mnemonics')
