@@ -243,7 +243,7 @@ def escape_latex(str):
 
 def print_instruction_table(nr_instructions=3):
     # print latex table
-    print("""\\begin{table}[]
+    print("""\\newcommand{\\instructiontable}{\\begin{table}[]
 \\centering
 \\begin{tabular}{|l|l|l|}
 \\hline""")
@@ -252,7 +252,7 @@ def print_instruction_table(nr_instructions=3):
     print("""\\end{tabular}
 \\caption{The most common instructions}
 \\label{tbl:common-instructions}
-\\end{table}""")
+\\end{table}}""")
 
 def print_mnemonic_table():
     """ Prints the table of project-unique instruction sequences that contain non-mnemonic instructions. """
@@ -300,6 +300,8 @@ def show_stats():
     print_query_as_command('nrProjects', 'SELECT COUNT(*) FROM GithubProject;')
     print('% number of projects where we checked the usage of inline assembly')
     print_query_as_command('nrCheckedProjects', 'SELECT COUNT(*) from GithubProject WHERE ANALYZED_FOR_INLINE_ASM=1')
+    print('% number of checked projects (i.e., excluding those where we did not analyze the single instruction sequences) that use inline assembly')
+    print_query_as_command('nrCheckedProjectsWithInlineAssembly', 'SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) FROM AsmSequencesInGithubProject')
     print('% number of projects where we did not yet check the usage of inline assembly')
     print_query_as_command('nrUncheckedProjects', 'SELECT COUNT(*) from GithubProject WHERE ANALYZED_FOR_INLINE_ASM!=1')
     print('% projects that contain one or more inline assembly sequences')
@@ -312,12 +314,10 @@ def show_stats():
     print_query_as_command('avgNrFileuniqueInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT COUNT(*) as number FROM AsmSequencesInGithubProject GROUP BY GITHUB_PROJECT_ID);', roundn=True)
     print('% total number of inline assembly snippets')
     print_query_as_command('nrInlineAssemblySnippets', 'SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesInGithubProject;')
-    print('% number of inline snippets with mnemonics')
-    print_query_as_command('nrInlineSnippetsWithMnemonics', 'SELECT COUNT(*) FROM AsmSequencesInGithubProject WHERE MNEMONIC = 1')
-    print('% number of inline snippets without mnemonics')
-    print_query_as_command('nrInlineSnippetsWithoutMnemonics', 'SELECT COUNT(*) FROM AsmSequencesInGithubProject WHERE MNEMONIC = 0')
-    print('% percentage of inline snippets that contain at least one non-mnemonic instruction')
-    print_query_as_command('percentageInlineSnippetsWithoutMnemonics', 'SELECT AVG(MNEMONIC = 0) * 100 FROM AsmSequencesInGithubProject', percentage=True)
+    print('% total number of projects that contain non-mnemonic instructions')
+    print_query_as_command('nrProjectsWithoutMnemonics', 'SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) FROM AsmSequencesInGithubProject WHERE MNEMONIC = 0')
+    print('% percentage of projects with inline assembly snippets that contain at least one non-mnemonic instruction')
+    print_query_as_command('percentageInlineSnippetsWithoutMnemonics', 'SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) * 100.0 / (SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) FROM AsmSequencesInGithubProject) FROM AsmSequencesInGithubProject WHERE MNEMONIC = 0', percentage=True)
     # SELECT AsmInstruction.ID, AsmInstruction.INSTRUCTION, (SELECT COUNT(DISTINCT AsmSequencesInGithubProject.Github_PROJECT_ID) FROM AsmSequenceInstruction, AsmSequencesInGithubProject WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = AsmInstruction.ID AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID) FROM AsmInstruction;
     # SELECT * FROM AsmSequenceInstruction WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = 9
     # SELECT COUNT(DISTINCT AsmSequencesInGithubProject.Github_PROJECT_ID) FROM AsmSequenceInstruction, AsmSequencesInGithubProject WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = 7 AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID
