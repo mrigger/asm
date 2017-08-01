@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# check: SELECT * FROM AsmSequencesInGithubProject WHERE AsmSequencesInGithubProject.ASM_SEQUENCE_ID NOT IN (SELECT ID FROM AsmSequence)
+
 import sqlite3
 import argparse
 import os
@@ -252,6 +254,19 @@ def print_instruction_table(nr_instructions=3):
 \\label{tbl:common-instructions}
 \\end{table}""")
 
+def print_mnemonic_table():
+    """ Prints the table of project-unique instruction sequences that contain non-mnemonic instructions. """
+    print("""\\newcommand{\\mnemonictable}{\\begin{table}[]
+\\centering
+\\begin{tabular}{|l|l|}
+\\hline""")
+    for row in c.execute('SELECT INSTRUCTIONS, COUNT (DISTINCT AsmSequencesInGithubProject.GITHUB_PROJECT_ID) count FROM AsmSequencesInGithubProject, AsmSequence WHERE MNEMONIC = 0 AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequence.ID GROUP BY AsmSequence.ID ORDER BY count DESC;'):
+        print("%s & %s \\\\ \hline" % (escape_latex(row[0]), row[1]))
+    print("""\\end{tabular}
+\\caption{Instruction sequences that did not use mnemonics}
+\\label{tbl:no-mnemonics}
+\\end{table}}""")
+
 def show_stats():
     #print("Instruction count over all projects and sequences:")
     #for row in c.execute('SELECT AsmInstruction.ID, AsmInstruction.INSTRUCTION, SUM(AsmSequencesInGithubProject.NR_OCCURRENCES) total_count FROM AsmSequenceInstruction, AsmInstruction, AsmSequencesInGithubProject WHERE AsmInstruction.ID = AsmSequenceInstruction.ASM_INSTRUCTION_ID AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID GROUP BY AsmInstruction.INSTRUCTION, AsmInstruction.ID ORDER BY total_count DESC'):
@@ -261,6 +276,7 @@ def show_stats():
     for row in c.execute('SELECT * FROM InlineAssemblyInstructionsInProjects ORDER BY count desc;'):
         print("{:<20} {:<10}".format(row[1], row[2]))
     print_instruction_table()
+    print_mnemonic_table()
     print('% how often an instruction appears in different projects')
     for row in c.execute('SELECT * FROM InlineAssemblyInstructionsInProjects ORDER BY count desc;'):
         instr_name = row[1].replace(' ', '')
