@@ -1,6 +1,8 @@
 #!/bin/python
 # vim:set ts=8 sts=8 sw=8 tw=80 cc=80 noet:
 
+import sys
+
 C = 0
 ASM = 1
 STRING = 2
@@ -124,20 +126,13 @@ def get_mnemonics(asm):
 	return out
 
 def get_instructions(asm):
-	with_size = []
-	without_size = []
+	out = []
 	for insn in asm:
 		if insn[:-1] in WITH_SUFFIX:
-			with_size += [ insn[:-1] ]
+			out += [ insn[:-1] ]
 		else:
-			without_size += [ insn ]
-	return with_size, without_size
-
-def unify(*args):
-	result = set()
-	for arg in args:
-		result = result.union(arg)
-	return sorted(result)
+			out += [ insn ]
+	return out
 
 if __name__ == "__main__":
 	fin_name = "/dev/stdin"
@@ -150,7 +145,7 @@ if __name__ == "__main__":
 		asm = read(fin)
 		asm = strip_labels(asm)
 		asm = get_mnemonics(asm)
-		asm_sz, asm_nosz = get_instructions(asm)
+		insns = get_instructions(asm)
 	with open(fout_name, "w") as fout:
-		fout.write("%s\n%s\n%s" % (";".join(asm_sz), ";".join(asm_nosz),
-			";".join(unify(asm_sz, asm_nosz))))
+		fout.write("%s\n%s" % (";".join(insns),
+			";".join(sorted(set(insns)))))
