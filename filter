@@ -1,4 +1,4 @@
-#!/bin/python
+#!/usr/bin/env python3
 # vim:set ts=8 sts=8 sw=8 tw=80 cc=80 noet:
 
 import sys
@@ -19,133 +19,135 @@ ASM_COMMANDS = set(("__asm__", "__asm", "asm"))
 MULTI = set(("lock", "rep"))
 
 WITH_SUFFIX = set(("bswap", "cmova", "cmovae", "cmovb", "cmovbe", "cmovc",
-	"cmove", "cmovg", "cmovge", "cmovl", "cmovle", "cmovna", "cmovnae",
-	"cmovnb", "cmovnbe", "cmovnc", "cmovne", "cmovng", "cmovnge", "cmovnl",
-	"cmovnle", "cmovno", "cmovnp", "cmovns", "cmovnz", "cmovo", "cmovp",
-	"cmovpe", "cmovpo", "cmovs", "cmovz", "cmpxchg", "mov", "movabs",
-	"movsb", "movzb", "pop", "push", "xadd", "xchg", "adc", "add", "cmp",
-	"dec", "div", "idiv", "imul", "inc", "mul", "neg", "sbb", "sub", "and",
-	"not", "or", "xor", "rcl", "rcr", "rol", "ror", "sal", "sar", "shl",
-	"shld", "shr", "shrd", "bsf", "bsr", "bt", "btc", "btr", "bts", "test",
-	"bound", "cmps", "lods", "movs", "scas", "stos", "ins", "outs", "pushf",
-	"popf", "lds", "les", "lfs", "lgs", "lss", "lea"))
+    "cmove", "cmovg", "cmovge", "cmovl", "cmovle", "cmovna", "cmovnae",
+    "cmovnb", "cmovnbe", "cmovnc", "cmovne", "cmovng", "cmovnge", "cmovnl",
+    "cmovnle", "cmovno", "cmovnp", "cmovns", "cmovnz", "cmovo", "cmovp",
+    "cmovpe", "cmovpo", "cmovs", "cmovz", "cmpxchg", "mov", "movabs",
+    "movsb", "movzb", "pop", "push", "xadd", "xchg", "adc", "add", "cmp",
+    "dec", "div", "idiv", "imul", "inc", "mul", "neg", "sbb", "sub", "and",
+    "not", "or", "xor", "rcl", "rcr", "rol", "ror", "sal", "sar", "shl",
+    "shld", "shr", "shrd", "bsf", "bsr", "bt", "btc", "btr", "bts", "test",
+    "bound", "cmps", "lods", "movs", "scas", "stos", "ins", "outs", "pushf",
+    "popf", "lds", "les", "lfs", "lgs", "lss", "lea"))
 
 def read(f):
-	data = f.read()
-	asm = ""
-	state = C
-	escapes = {
-			"r": "\r",
-			"n": "\n",
-			"t": "\t",
-			'"': '"'
-			}
-	buf = ""
+    data = f.read()
+    asm = ""
+    state = C
+    escapes = {
+            "r": "\r",
+            "n": "\n",
+            "t": "\t",
+            '"': '"'
+            }
+    buf = ""
 
-	for c in data:
-		c = c.lower()
-		if state == C:
-			if c == "/":
-				state = SLASH_C
-			elif c in DELIMITERS:
-				if buf in ASM_COMMANDS:
-					state = ASM
-				buf = ""
-			else:
-				buf += c
-		elif state == ESCAPE:
-			if c in escapes:
-				asm += escapes[c]
-			else:
-				asm += "\\" + c
-			state = STRING
-		elif state == STRING:
-			if c == '"':
-				state = ASM
-			elif c == '\\':
-				state = ESCAPE
-			elif c == ";":
-				asm += "\n"
-			else:
-				asm += c
-		elif state == ASM:
-			if c == '"':
-				state = STRING
-			elif c == "/":
-				state = SLASH_ASM
-			elif c == ":" or c == ")":
-				asm += "\n"
-				state = C
-		elif state == SLASH_C:
-			if c == "*":
-				state = COMMENT_C
-			elif c == '"':
-				state = STRING
-		elif state == COMMENT_C:
-			if c == "*":
-				state = TIMES_C
-		elif state == TIMES_C:
-			if c == "/":
-				state = C
-		elif state == SLASH_ASM:
-			if c == "*":
-				state = COMMENT_ASM
-			elif c == '"':
-				state = STRING
-		elif state == COMMENT_ASM:
-			if c == "*":
-				state = TIMES_ASM
-		elif state == TIMES_ASM:
-			if c == "/":
-				state = ASM
-	return asm
+    for c in data:
+        c = c.lower()
+        if state == C:
+            if c == "/":
+                state = SLASH_C
+            elif c in DELIMITERS:
+                if buf in ASM_COMMANDS:
+                    state = ASM
+                buf = ""
+            else:
+                buf += c
+        elif state == ESCAPE:
+            if c in escapes:
+                asm += escapes[c]
+            else:
+                asm += "\\" + c
+            state = STRING
+        elif state == STRING:
+            if c == '"':
+                state = ASM
+            elif c == '\\':
+                state = ESCAPE
+            elif c == ";":
+                asm += "\n"
+            else:
+                asm += c
+        elif state == ASM:
+            if c == '"':
+                state = STRING
+            elif c == "/":
+                state = SLASH_ASM
+            elif c == ":" or c == ")":
+                asm += "\n"
+                state = C
+        elif state == SLASH_C:
+            if c == "*":
+                state = COMMENT_C
+            elif c == '"':
+                state = STRING
+        elif state == COMMENT_C:
+            if c == "*":
+                state = TIMES_C
+        elif state == TIMES_C:
+            if c == "/":
+                state = C
+        elif state == SLASH_ASM:
+            if c == "*":
+                state = COMMENT_ASM
+            elif c == '"':
+                state = STRING
+        elif state == COMMENT_ASM:
+            if c == "*":
+                state = TIMES_ASM
+        elif state == TIMES_ASM:
+            if c == "/":
+                state = ASM
+    return asm
 
 def strip_labels(asm):
-	out = ""
-	for line in asm.splitlines():
-		if ":" in line:
-			colon = line.index(":")
-			l = line[colon + 1:]
-		else:
-			l = line
-		l = l.strip()
-		out += l.strip() + "\n"
-	return out
+    out = ""
+    for line in asm.splitlines():
+        if ":" in line:
+            colon = line.index(":")
+            l = line[colon + 1:]
+        elif ".align" in line:
+            l = ""
+        else:
+            l = line
+        l = l.strip()
+        out += l.strip() + "\n"
+    return out
 
 def get_mnemonics(asm):
-	out = []
-	for line in asm.splitlines():
-		tokens = line.split()
-		if len(tokens) > 0:
-			mnemonic = tokens[0]
-			if len(mnemonic) > 0:
-				if mnemonic in MULTI:
-					out += [ " ".join(tokens[0:2]) ]
-				else:
-					out += [ mnemonic ]
-	return out
+    out = []
+    for line in asm.splitlines():
+        tokens = line.split()
+        if len(tokens) > 0:
+            mnemonic = tokens[0]
+            if len(mnemonic) > 0:
+                if mnemonic in MULTI:
+                    out += [ " ".join(tokens[0:2]) ]
+                else:
+                    out += [ mnemonic ]
+    return out
 
 def get_instructions(asm):
-	out = []
-	for insn in asm:
-		if insn[:-1] in WITH_SUFFIX:
-			out += [ insn[:-1] ]
-		else:
-			out += [ insn ]
-	return out
+    out = []
+    for insn in asm:
+        if insn[:-1] in WITH_SUFFIX:
+            out += [ insn[:-1] ]
+        else:
+            out += [ insn ]
+    return out
 
 if __name__ == "__main__":
-	fin_name = "/dev/stdin"
-	fout_name = "/dev/stdout"
-	if len(sys.argv) > 1:
-		fin_name = sys.argv[1]
-	if len(sys.argv) > 2:
-		fout_name = sys.argv[2]
-	with open(fin_name) as fin:
-		asm = read(fin)
-		asm = strip_labels(asm)
-		asm = get_mnemonics(asm)
-		insns = get_instructions(asm)
-	with open(fout_name, "w") as fout:
-		fout.write("%s\n%s" % (";".join(insns),
-			";".join(sorted(set(insns)))))
+    fin_name = "/dev/stdin"
+    fout_name = "/dev/stdout"
+    if len(sys.argv) > 1:
+        fin_name = sys.argv[1]
+    if len(sys.argv) > 2:
+        fout_name = sys.argv[2]
+    with open(fin_name) as fin:
+        asm = read(fin)
+        asm = strip_labels(asm)
+        asm = get_mnemonics(asm)
+        insns = get_instructions(asm)
+    with open(fout_name, "w") as fout:
+        fout.write("%s\n\n%s\n" % (";".join(insns),
+            ";".join(sorted(set(insns)))))
