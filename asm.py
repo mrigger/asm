@@ -334,7 +334,10 @@ def show_stats():
     print_query_as_command('nrUniqueInlineAssemblySnippets', 'SELECT COUNT(DISTINCT ASM_SEQUENCE_ID) FROM AsmSequencesInAnalyzedGithubProjects;')
     print('% total number of file-unique inline assembly snippets')
     print_query_as_command('nrFileUniqueInlineAssemblySnippets', 'SELECT COUNT(ASM_SEQUENCE_ID) FROM AsmSequencesInAnalyzedGithubProjects;')
-           
+    print('% average number of inline assembly snippets per instruction')
+    print_query_as_command('nrFileUniqueInlineAssemblySnippets', 'SELECT AVG(number_instructions * NR_OCCURRENCES) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects;')
+    print('% number of inline assembly snippets with one instruction')
+    print_query_as_command('nrInlineAssemblySnippetsWithOnlyOneInstruction', 'SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects WHERE number_instructions = 1')
     
     print('\n%############ statistics about mnemonics')
     print('% total number of projects that contain non-mnemonic instructions')
