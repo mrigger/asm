@@ -260,7 +260,7 @@ def print_mnemonic_table():
 \\centering
 \\begin{tabular}{|l|l|}
 \\hline""")
-    for row in c.execute('SELECT INSTRUCTIONS, COUNT (DISTINCT AsmSequencesInGithubProject.GITHUB_PROJECT_ID) count FROM AsmSequencesInGithubProject, AsmSequence WHERE MNEMONIC = 0 AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequence.ID GROUP BY AsmSequence.ID ORDER BY count DESC;'):
+    for row in c.execute('SELECT INSTRUCTIONS, COUNT (DISTINCT AsmSequencesInAnalyzedGithubProjects.GITHUB_PROJECT_ID) count FROM AsmSequencesInAnalyzedGithubProjects, AsmSequence WHERE MNEMONIC = 0 AND AsmSequencesInAnalyzedGithubProjects.ASM_SEQUENCE_ID = AsmSequence.ID GROUP BY AsmSequence.ID ORDER BY count DESC;'):
         print("%s & %s \\\\ \hline" % (escape_latex(row[0]), row[1]))
     print("""\\end{tabular}
 \\caption{Instruction sequences that did not use mnemonics}
@@ -297,27 +297,52 @@ def show_stats():
     print('% total LOC of .c and .h files')
     print_query_as_command('loc', 'SELECT SUM(CLOC_LOC_H+CLOC_LOC_C) FROM GithubProject;')
     print('% total number of projects')
-    print_query_as_command('nrProjects', 'SELECT COUNT(*) FROM GithubProject;')
+    print_query_as_command('nrProjects', 'SELECT COUNT(*) FROM GithubProject;')#
+
+    print('\n%############ statistics about checked projects')
     print('% number of projects where we checked the usage of inline assembly')
-    print_query_as_command('nrCheckedProjects', 'SELECT COUNT(*) from GithubProject WHERE ANALYZED_FOR_INLINE_ASM=1')
+    print_query_as_command('nrCheckedProjects', 'SELECT COUNT(*) FROM GithubProjectCompletelyAnalyzed')
+    print('% percentage of all projects where we checked the usage of inline assembly')
+    print_query_as_command('percentageCheckedProjects', 'SELECT COUNT(*) * 100.00 / (SELECT COUNT(*) FROM GithubProject) FROM GithubProjectCompletelyAnalyzed', percentage=True)
+    print('% number of projects projects that use inline assembly')
+    print_query_as_command('nrProjectsWithInlineAssembly', 'SELECT COUNT(*) FROM GithubProjectWithInlineAsm')
     print('% number of checked projects (i.e., excluding those where we did not analyze the single instruction sequences) that use inline assembly')
-    print_query_as_command('nrCheckedProjectsWithInlineAssembly', 'SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) FROM AsmSequencesInGithubProject')
-    print('% number of projects where we did not yet check the usage of inline assembly')
-    print_query_as_command('nrUncheckedProjects', 'SELECT COUNT(*) from GithubProject WHERE ANALYZED_FOR_INLINE_ASM!=1')
-    print('% projects that contain one or more inline assembly sequences')
-    print_query_as_command('nrProjectsWithInlineAsm', 'SELECT COUNT(*) FROM GithubProjectWithInlineAsm')
+    print_query_as_command('nrCheckedProjectsWithInlineAssembly', 'SELECT COUNT(*) FROM GithubProjectWithCheckedInlineAsm')
     print('% percentage of projects that contain one or more inline assembly sequences')
-    print_query_as_command('percentageProjectsWithInlineAsm', 'SELECT COUNT(*)*100 / (SELECT COUNT(*)*1.0 FROM GithubProject) FROM GithubProjectWithInlineAsm', percentage=True)
-    print('% average number of inline assembly snippets computed over the set of projects that use inline assembly')
-    print_query_as_command('avgNrInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT SUM(NR_OCCURRENCES) as number FROM AsmSequencesInGithubProject GROUP BY GITHUB_PROJECT_ID);', roundn=True)
-    print('% average number of UNIQUE (on a file basis) inline assembly snippets computed over the set of projects that use inline assembly')
-    print_query_as_command('avgNrFileuniqueInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT COUNT(*) as number FROM AsmSequencesInGithubProject GROUP BY GITHUB_PROJECT_ID);', roundn=True)
+    print_query_as_command('percentageProjectsWithInlineAsm', 'SELECT COUNT(*)*100.00 / (SELECT COUNT(*) FROM GithubProject) FROM GithubProjectWithInlineAsm', percentage=True)
+    print('% percentage of checked projects of projects that have inline assembly sequences (checked + unchecked)')
+    print_query_as_command('percentageCheckedProjectsWithInlineAsm', 'SELECT COUNT(*)*100.00 / (SELECT COUNT(*) FROM GithubProjectWithInlineAsm) FROM GithubProjectWithCheckedInlineAsm', percentage=True)
+
+
+    print('\n%############ statistics about unchecked projects')
+    print('% number of projects that we did not analyze because the contained too large/many inline assembly snippets (or we yet have to analyze)')
+    print_query_as_command('numberProjectsNotAnalyzed', 'SELECT COUNT(*) FROM GithubProjectNotCompletelyAnalyzed')
+    print('% percentage of all projects where we did NOT check the usage of inline assembly (but which contain inline assembly)')
+    print_query_as_command('percentageProjectsNotAnalyzed', 'SELECT COUNT(*) * 100.00 / (SELECT COUNT(*) FROM GithubProject) FROM GithubProjectNotCompletelyAnalyzed', percentage=True)
+    print('% percentage of unchecked projects that have inline assembly sequences (checked + unchecked)')
+    print_query_as_command('percentageUncheckedProjectsWithInlineAsm', 'SELECT COUNT(*)*100.00 / (SELECT COUNT(*) FROM GithubProjectWithInlineAsm) FROM GithubProjectNotCompletelyAnalyzed', percentage=True)
+
+
+    print('\n%############ statistics about inline assembly frequences')
+    print('\n% average number of inline assembly snippets computed over the set of projects that use inline assembly')
+    print_query_as_command('avgNrInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT SUM(NR_OCCURRENCES) as number FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID);', roundn=True)
+    print('% average number of unique inline assembly snippets computed over the set of projects that use inline assembly')
+    print_query_as_command('avgNrUniqueInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT COUNT(DISTINCT ASM_SEQUENCE_ID) as number FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID);', roundn=True)
     print('% total number of inline assembly snippets')
-    print_query_as_command('nrInlineAssemblySnippets', 'SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesInGithubProject;')
+    print_query_as_command('nrInlineAssemblySnippets', 'SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesInAnalyzedGithubProjects;')
+    print('% total number of unique inline assembly snippets')
+    print_query_as_command('nrUniqueInlineAssemblySnippets', 'SELECT COUNT(DISTINCT ASM_SEQUENCE_ID) FROM AsmSequencesInAnalyzedGithubProjects;')
+    print('% total number of file-unique inline assembly snippets')
+    print_query_as_command('nrFileUniqueInlineAssemblySnippets', 'SELECT COUNT(ASM_SEQUENCE_ID) FROM AsmSequencesInAnalyzedGithubProjects;')
+           
+    
+    print('\n%############ statistics about mnemonics')
     print('% total number of projects that contain non-mnemonic instructions')
-    print_query_as_command('nrProjectsWithoutMnemonics', 'SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) FROM AsmSequencesInGithubProject WHERE MNEMONIC = 0')
+    print_query_as_command('nrProjectsWithoutMnemonics', 'SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) FROM AsmSequencesInAnalyzedGithubProjects WHERE MNEMONIC = 0')
     print('% percentage of projects with inline assembly snippets that contain at least one non-mnemonic instruction')
-    print_query_as_command('percentageInlineSnippetsWithoutMnemonics', 'SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) * 100.0 / (SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) FROM AsmSequencesInGithubProject) FROM AsmSequencesInGithubProject WHERE MNEMONIC = 0', percentage=True)
+    print_query_as_command('percentageInlineSnippetsWithoutMnemonics', 'SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) * 100.0 / (SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) FROM AsmSequencesInAnalyzedGithubProjects) FROM AsmSequencesInAnalyzedGithubProjects WHERE MNEMONIC = 0', percentage=True)
+    print('% percentage of projects whose first commit was in 2008 or later')
+    print_query_as_command('percentageProjectsAfterGithubLaunch', 'SELECT (SELECT COUNT(*) FROM GithubProject WHERE GIT_FIRST_COMMIT_DATE >= 2008) * 100.0 /  COUNT(*) FROM GithubProject', percentage=True)
     # SELECT AsmInstruction.ID, AsmInstruction.INSTRUCTION, (SELECT COUNT(DISTINCT AsmSequencesInGithubProject.Github_PROJECT_ID) FROM AsmSequenceInstruction, AsmSequencesInGithubProject WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = AsmInstruction.ID AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID) FROM AsmInstruction;
     # SELECT * FROM AsmSequenceInstruction WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = 9
     # SELECT COUNT(DISTINCT AsmSequencesInGithubProject.Github_PROJECT_ID) FROM AsmSequenceInstruction, AsmSequencesInGithubProject WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = 7 AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID
