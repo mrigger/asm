@@ -276,8 +276,12 @@ def show_stats(output_dir):
     print("Number of times an instruction is contained in different projects:")
     for row in c.execute('SELECT * FROM InlineAssemblyInstructionsInProjects ORDER BY count desc;'):
         print("{:<20} {:<10}".format(row[1], row[2]))
+
+    sys.stdout = open(output_dir + '/commands.tex', 'w+')
+
     print_instruction_table()
     print_mnemonic_table()
+
     print('% how often an instruction appears in different projects')
     for row in c.execute('SELECT * FROM InlineAssemblyInstructionsInProjects ORDER BY count desc;'):
         instr_name = row[1].replace(' ', '')
@@ -336,9 +340,15 @@ def show_stats(output_dir):
     print('% total number of file-unique inline assembly snippets')
     print_query_as_command('nrFileUniqueInlineAssemblySnippets', 'SELECT COUNT(ASM_SEQUENCE_ID) FROM AsmSequencesInAnalyzedGithubProjects;')
     print('% average number of inline assembly snippets per instruction')
-    print_query_as_command('nrFileUniqueInlineAssemblySnippets', 'SELECT AVG(number_instructions * NR_OCCURRENCES) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects;')
+    print_query_as_command('avgNrInlineAssemblyInstructionsPerSnippet', 'SELECT AVG(number_instructions * NR_OCCURRENCES) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects;', roundn=True)
     print('% number of inline assembly snippets with one instruction')
     print_query_as_command('nrInlineAssemblySnippetsWithOnlyOneInstruction', 'SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects WHERE number_instructions = 1')
+    print('% percentage of inline assembly snippets with one instruction')
+    print_query_as_command('percentageInlineAssemblySnippetsWithOnlyOneInstruction', 'SELECT 100.0 * SUM(NR_OCCURRENCES) / (SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects WHERE number_instructions = 1', percentage=True)
+    print('% inline assembly snippet with most instructions')
+    print_query_as_command('nrInstructionsLargestInlineAssemblySnippet', 'SELECT MAX(number_instructions) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects')
+    print('% maximum number of inline assembly snippets in a project')
+    print_query_as_command('maxNrInlineAssemblySnippetsInProject', 'SELECT MAX(nr_snippets) FROM (SELECT SUM(NR_OCCURRENCES) as nr_snippets FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID)')
 
     print('\n%############ statistics about mnemonics')
     print('% total number of projects that contain non-mnemonic instructions')
@@ -351,14 +361,26 @@ def show_stats(output_dir):
     # SELECT * FROM AsmSequenceInstruction WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = 9
     # SELECT COUNT(DISTINCT AsmSequencesInGithubProject.Github_PROJECT_ID) FROM AsmSequenceInstruction, AsmSequencesInGithubProject WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = 7 AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID
 
-    f = open(output_dir + '/instruction_lengths.csv', 'w+')
-    sys.stdout = f
-    print('instructions_length;count')
+    sys.stdout.close()
+
+
+    # number of non-unique snippets per project (TODO: does not completely round up to 100%)
+    sys.stdout = open(output_dir + '/nr_snippets.csv', 'w+')
+    print('nr_snippets;percentage')
+    max_nr_snippets = c.execute('SELECT MAX(nr_snippets) FROM (SELECT SUM(NR_OCCURRENCES) as nr_snippets FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID)').fetchone()[0]
+    for nr_snippets in range(1, max_nr_snippets+1):
+        nr_occurrences = c.execute('SELECT COUNT(*) * 100.0 / (SELECT COUNT(*) FROM GithubProjectWithCheckedInlineAsm) FROM (SELECT SUM(NR_OCCURRENCES) as nr_snippets FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID) WHERE nr_snippets <= ?;', (nr_snippets,)).fetchone()[0]
+        print(str(nr_snippets) + ';' + str(nr_occurrences))
+    sys.stdout.close()
+
+    # instruction length per snippet
+    sys.stdout = open(output_dir + '/instruction_lengths.csv', 'w+')
+    print('nr_instructions;percentage')
     max_instructions_per_snippet = c.execute('SELECT MAX(number_instructions) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects').fetchone()[0]
     for nr_instructions in range(1, max_instructions_per_snippet+1):
         nr_occurrences = c.execute('SELECT SUM(NR_OCCURRENCES)*100.0 / (SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects WHERE number_instructions <= ?', (nr_instructions,)).fetchone()[0]
         print(str(nr_instructions) + ';' + str(nr_occurrences))
-    f.close()
+    sys.stdout.close()
 
 def add_keywords_to_project(url, keywords):
     keyword_tokens = keywords.split(',')
