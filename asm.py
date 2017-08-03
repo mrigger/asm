@@ -10,6 +10,7 @@ import urllib.request, json
 import datetime
 import re
 import time
+import sys
 
 parser = argparse.ArgumentParser(description='Manipulate the inline assembler database.')
 
@@ -267,7 +268,7 @@ def print_mnemonic_table():
 \\label{tbl:no-mnemonics}
 \\end{table}}""")
 
-def show_stats():
+def show_stats(output_dir):
     #print("Instruction count over all projects and sequences:")
     #for row in c.execute('SELECT AsmInstruction.ID, AsmInstruction.INSTRUCTION, SUM(AsmSequencesInGithubProject.NR_OCCURRENCES) total_count FROM AsmSequenceInstruction, AsmInstruction, AsmSequencesInGithubProject WHERE AsmInstruction.ID = AsmSequenceInstruction.ASM_INSTRUCTION_ID AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID GROUP BY AsmInstruction.INSTRUCTION, AsmInstruction.ID ORDER BY total_count DESC'):
     #    print("{:<20} {:<10}".format(row[1], row[2]))
@@ -338,7 +339,7 @@ def show_stats():
     print_query_as_command('nrFileUniqueInlineAssemblySnippets', 'SELECT AVG(number_instructions * NR_OCCURRENCES) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects;')
     print('% number of inline assembly snippets with one instruction')
     print_query_as_command('nrInlineAssemblySnippetsWithOnlyOneInstruction', 'SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects WHERE number_instructions = 1')
-    
+
     print('\n%############ statistics about mnemonics')
     print('% total number of projects that contain non-mnemonic instructions')
     print_query_as_command('nrProjectsWithoutMnemonics', 'SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) FROM AsmSequencesInAnalyzedGithubProjects WHERE MNEMONIC = 0')
@@ -349,6 +350,15 @@ def show_stats():
     # SELECT AsmInstruction.ID, AsmInstruction.INSTRUCTION, (SELECT COUNT(DISTINCT AsmSequencesInGithubProject.Github_PROJECT_ID) FROM AsmSequenceInstruction, AsmSequencesInGithubProject WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = AsmInstruction.ID AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID) FROM AsmInstruction;
     # SELECT * FROM AsmSequenceInstruction WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = 9
     # SELECT COUNT(DISTINCT AsmSequencesInGithubProject.Github_PROJECT_ID) FROM AsmSequenceInstruction, AsmSequencesInGithubProject WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = 7 AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID
+
+    f = open(output_dir + '/instruction_lengths.csv', 'w+')
+    sys.stdout = f
+    print('instructions_length;count')
+    max_instructions_per_snippet = c.execute('SELECT MAX(number_instructions) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects').fetchone()[0]
+    for nr_instructions in range(1, max_instructions_per_snippet+1):
+        nr_occurrences = c.execute('SELECT SUM(NR_OCCURRENCES)*100.0 / (SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects WHERE number_instructions <= ?', (nr_instructions,)).fetchone()[0]
+        print(str(nr_instructions) + ';' + str(nr_occurrences))
+    f.close()
 
 def add_keywords_to_project(url, keywords):
     keyword_tokens = keywords.split(',')
@@ -484,5 +494,8 @@ elif args.command == 'add-project-keywords':
         exit(-1)
     add_keywords_to_project(args.file, args.keywords)
 elif args.command == 'show-stats':
-    show_stats()
+    if args.file is None:
+        print("specify --file arg to specify the output directory")
+        exit(-1)
+    show_stats(args.file)
 
