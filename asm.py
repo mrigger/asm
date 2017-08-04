@@ -172,10 +172,12 @@ def check_for_invalid_instructions(instrs):
         if instr == 'rep nop':
             print('Please insert "rep nop" as pause (MNEMONIC is 0)!')
             exit(-1)
+        if instr == 'xchg':
+            print('Please insert "xchg" as "lock xchg"!')
         # check the interrupt format
         if re.match('int .*', instr):
             if not re.match('int \$0x[0-9a-f]{2}', instr):
-                print('Please use the format "int $0xa3" to specify numbers in int instructions!')
+                print('Please use the format "int $0xa3" to specify numbers in int instructions! ' + instr)
                 exit(-1)
 
 def add_asm_sequence(instrs, testcase, note=''):
@@ -255,18 +257,31 @@ def print_instruction_table(nr_instructions=3):
 \\label{tbl:common-instructions}
 \\end{table}}""")
 
-def print_mnemonic_table():
+def print_mnemonic_table(nr_projects=2):
     """ Prints the table of project-unique instruction sequences that contain non-mnemonic instructions. """
     print("""\\newcommand{\\mnemonictable}{\\begin{table}[]
 \\centering
 \\begin{tabular}{|l|l|}
 \\hline""")
-    for row in c.execute('SELECT INSTRUCTIONS, COUNT (DISTINCT AsmSequencesInAnalyzedGithubProjects.GITHUB_PROJECT_ID) count FROM AsmSequencesInAnalyzedGithubProjects, AsmSequence WHERE MNEMONIC = 0 AND AsmSequencesInAnalyzedGithubProjects.ASM_SEQUENCE_ID = AsmSequence.ID GROUP BY AsmSequence.ID ORDER BY count DESC;'):
+    for row in c.execute('SELECT INSTRUCTIONS, COUNT (DISTINCT AsmSequencesInAnalyzedGithubProjects.GITHUB_PROJECT_ID) count FROM AsmSequencesInAnalyzedGithubProjects, AsmSequence WHERE MNEMONIC = 0 AND AsmSequencesInAnalyzedGithubProjects.ASM_SEQUENCE_ID = AsmSequence.ID GROUP BY AsmSequence.ID HAVING count >= ? ORDER BY count DESC;', (nr_projects,)):
         print("%s & %s \\\\ \hline" % (escape_latex(row[0]), row[1]))
     print("""\\end{tabular}
-\\caption{Instruction sequences that did not use mnemonics}
+\\caption{Instruction sequences that did not use mnemonics and where used in at least """ + str(nr_projects) + """ projects}
 \\label{tbl:no-mnemonics}
 \\end{table}}""")
+
+def database_integrity_tests():
+    if c.execute('SELECT COUNT(*) FROM AsmSequencesInGithubProjectUnfiltered WHERE ASM_SEQUENCE_ID NOT IN (SELECT ID FROM AsmSequence)').fetchone()[0] != 0:
+        print('Dangling AsmSequence entry!')
+        exit(-1)
+    # not supported by the Python sqlite3 bindings?
+    #if c.execute('SELECT * FROM AsmSequencesInGithubProjectUnfiltered WHERE CODE REGEXP "rep([; \t\n])*nop" AND MNEMONIC = 1').fetchone()[0] != 0:
+    if c.execute('SELECT COUNT(*) FROM AsmSequencesInGithubProjectUnfiltered WHERE MNEMONIC = 1 AND (CODE LIKE "%rep; nop%" or CODE LIKE "%rep;nop%")').fetchone()[0] != 0:
+        print('rep nop with MNEMONIC = 0')
+        exit(-1)
+    if c.execute('SELECT COUNT(*) FROM AsmSequencesInGithubProjectUnfiltered WHERE CODE LIKE "%.byte%" AND MNEMONIC = 1').fetchone()[0] != 0:
+        print('.byte with MNEMONIC = 0')
+        exit(-1)
 
 def show_stats(output_dir):
     #print("Instruction count over all projects and sequences:")
@@ -519,5 +534,6 @@ elif args.command == 'show-stats':
     if args.file is None:
         print("specify --file arg to specify the output directory")
         exit(-1)
+    database_integrity_tests()
     show_stats(args.file)
 
