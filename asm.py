@@ -250,7 +250,7 @@ def print_instruction_table(nr_instructions=3):
 \\centering
 \\begin{tabular}{|l|l|l|}
 \\hline""")
-    for row in c.execute('SELECT *, 100. * count / (SELECT SUM(count) FROM InlineAssemblyInstructionsInProjects) AS percentage FROM InlineAssemblyInstructionsInProjects WHERE count >= ' + str(nr_instructions) + ' ORDER BY count desc;'):
+    for row in c.execute('SELECT * FROM InstructionFrequencies WHERE count >= ' + str(nr_instructions) + ' ORDER BY count desc;'):
         print("%s & %s & %.1f\%% \\\\ \hline" % (escape_latex(row[1]), row[2], row[3]))
     print("""\\end{tabular}
 \\caption{The most common instructions}
@@ -281,6 +281,9 @@ def database_integrity_tests():
         exit(-1)
     if c.execute('SELECT COUNT(*) FROM AsmSequencesInGithubProjectUnfiltered WHERE CODE LIKE "%.byte%" AND MNEMONIC = 1').fetchone()[0] != 0:
         print('.byte with MNEMONIC = 0')
+        exit(-1)
+    if c.execute('SELECT COUNT(*) FROM AsmInstruction WHERE INSTRUCTION LIKE "j%" AND CONTROL_FLOW = 0').fetchone()[0] != 0:
+        print('jump instruction with CONTROL_FLOW = 0')
         exit(-1)
 
 def show_stats(output_dir):
@@ -375,6 +378,22 @@ def show_stats(output_dir):
     # SELECT AsmInstruction.ID, AsmInstruction.INSTRUCTION, (SELECT COUNT(DISTINCT AsmSequencesInGithubProject.Github_PROJECT_ID) FROM AsmSequenceInstruction, AsmSequencesInGithubProject WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = AsmInstruction.ID AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID) FROM AsmInstruction;
     # SELECT * FROM AsmSequenceInstruction WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = 9
     # SELECT COUNT(DISTINCT AsmSequencesInGithubProject.Github_PROJECT_ID) FROM AsmSequenceInstruction, AsmSequencesInGithubProject WHERE AsmSequenceInstruction.ASM_INSTRUCTION_ID = 7 AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID
+
+
+    print('\n%########### statistics about instruction groups')
+    query = "SELECT 100.0 * COUNT(DISTINCT AsmSequencesInAnalyzedGithubProjects.Github_PROJECT_ID) / (SELECT COUNT(*) FROM GithubProjectWithCheckedInlineAsm) FROM AsmSequencesInAnalyzedGithubProjects, AsmInstruction, AsmSequenceInstruction WHERE AsmSequencesInAnalyzedGithubProjects.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID AND AsmSequenceInstruction.ASM_INSTRUCTION_ID = AsmInstruction.ID AND AsmInstruction.INSTRUCTION "
+    print_query_as_command('percentageProjectsWithControlFlowInstructions', query + 'LIKE "j%"', percentage=True)
+    print_query_as_command('percentageProjectsWithFenceInstructions', query + "IN ('mfence', 'lfence', 'sfence')", percentage=True)
+    print_query_as_command('percentageBitScanInstructions', query + "IN ('bsr', 'bsf')", percentage=True)
+    print_query_as_command('percentageProjectsWithTimeInstructions', query + "IN ('cpuid', 'rdtsc', '')", percentage=True)
+    print_query_as_command('percentageProjectsWithAtomicInstructions', query + "LIKE 'lock%'", percentage=True)
+    print_query_as_command('percentageProjectsWithArithmeticInstructions', query + "IN ('xor', 'add', 'or', 'sub', 'and', 'inc', 'dec', 'mul', 'adc', 'dec', 'neg')", percentage=True)
+    print_query_as_command('percentageProjectsWithPauseInstructions', query + "LIKE 'pause'", percentage=True)
+    print_query_as_command('percentageProjectsWithCompilerBarriers', query + "LIKE ''", percentage=True)
+    print_query_as_command('percentageProjectsWithEndiannessInstructions', query + "IN ('lock xchg', 'rol', 'ror', 'bswap')", percentage=True)
+    print_query_as_command('percentageProjectsWithPrefetch', query + "LIKE 'prefetch'", percentage=True)
+    print_query_as_command('percentageProjectsWithRandomNumber', query + "LIKE 'rdrand'", percentage=True)
+    print_query_as_command('percentageProjectsWithFeatureDetection', query + "IN ('cpuid', 'xgetbv')", percentage=True)
 
     sys.stdout.close()
 
