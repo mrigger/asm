@@ -321,6 +321,15 @@ def show_stats(output_dir):
     print_query_as_command('loc', 'SELECT SUM(CLOC_LOC_H+CLOC_LOC_C) FROM GithubProject;')
     print('% total number of projects')
     print_query_as_command('nrProjects', 'SELECT COUNT(*) FROM GithubProject;')#
+    print('% total number of unique instructions')
+    print_query_as_command('nrUniqueInstructions', 'SELECT COUNT(*) FROM InstructionFrequencies WHERE percentage > 0')
+    checked_down_to_stars = '850'
+    print('% checked down to # stars')
+    print_query_as_command('githubStarsPopularity', 'SELECT ' + checked_down_to_stars)
+    print('% checked projects by popularity')
+    print_query_as_command('nrSelectedProjectsByPopularity', 'SELECT COUNT(*) FROM GithubProject WHERE GithubProject.GITHUB_NR_STARGAZERS >= ' + checked_down_to_stars)
+    print('% checked projects by domain')
+    print_query_as_command('nrSelectedProjectsByDomain', 'SELECT COUNT(*) FROM GithubProject WHERE GithubProject.GITHUB_NR_STARGAZERS < ' + checked_down_to_stars)
 
     print('\n%############ statistics about checked projects')
     print('% number of projects where we checked the usage of inline assembly')
