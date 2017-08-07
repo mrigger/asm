@@ -257,7 +257,7 @@ def print_instruction_table(nr_instructions=3):
 \\label{tbl:common-instructions}
 \\end{table}}""")
 
-def print_mnemonic_table(nr_projects=2):
+def print_mnemonic_table(nr_projects=5):
     """ Prints the table of project-unique instruction sequences that contain non-mnemonic instructions. """
     print("""\\newcommand{\\mnemonictable}{\\begin{table}[]
 \\centering
@@ -286,17 +286,67 @@ def database_integrity_tests():
         print('jump instruction with CONTROL_FLOW = 0')
         exit(-1)
 
+def create_scatter_plot_data(output_dir):
+    sys.stdout = open(output_dir + '/scatterplot_git_commits.csv', 'w+')
+    print('nr_commits;nr_inline_snippets')
+    for row in c.execute('SELECT GIT_NR_COMMITS, SUM(NR_OCCURRENCES) AS nr FROM GithubProjectCompletelyAnalyzed, AsmSequencesInAnalyzedGithubProjects WHERE GithubProjectCompletelyAnalyzed.ID = AsmSequencesInAnalyzedGithubProjects.GITHUB_PROJECT_ID GROUP BY GITHUB_PROJECT_ID'):
+        print('%d;%d' % row)
+    sys.stdout.close()
+
+    sys.stdout = open(output_dir + '/scatterplot_git_nr_committers.csv', 'w+')
+    print('nr_commiters;nr_inline_snippets')
+    for row in c.execute('SELECT GIT_NR_COMMITTERS, SUM(NR_OCCURRENCES) AS nr FROM GithubProjectCompletelyAnalyzed, AsmSequencesInAnalyzedGithubProjects WHERE GithubProjectCompletelyAnalyzed.ID = AsmSequencesInAnalyzedGithubProjects.GITHUB_PROJECT_ID GROUP BY GITHUB_PROJECT_ID'):
+        print('%d;%d' % row)
+    sys.stdout.close()
+
+    sys.stdout = open(output_dir + '/scatterplot_git_stargazers.csv', 'w+')
+    print('github_stargazers;nr_inline_snippets')
+    for row in c.execute('SELECT GITHUB_NR_STARGAZERS, SUM(NR_OCCURRENCES) AS nr FROM GithubProjectCompletelyAnalyzed, AsmSequencesInAnalyzedGithubProjects WHERE GithubProjectCompletelyAnalyzed.ID = AsmSequencesInAnalyzedGithubProjects.GITHUB_PROJECT_ID GROUP BY GITHUB_PROJECT_ID'):
+        print('%d;%d' % row)
+    sys.stdout.close()
+
+    sys.stdout = open(output_dir + '/scatterplot_first_commit_date.csv', 'w+')
+    print('first_commit_date;nr_inline_snippets')
+    for row in c.execute('SELECT GIT_FIRST_COMMIT_DATE, SUM(NR_OCCURRENCES) AS nr FROM GithubProjectCompletelyAnalyzed, AsmSequencesInAnalyzedGithubProjects WHERE GithubProjectCompletelyAnalyzed.ID = AsmSequencesInAnalyzedGithubProjects.GITHUB_PROJECT_ID GROUP BY GITHUB_PROJECT_ID'):
+        print('%s;%d' % row)
+    sys.stdout.close()
+
+    sys.stdout = open(output_dir + '/scatterplot_macro_assembly.csv', 'w+')
+    print('macro_assembly_loc;nr_inline_snippets')
+    for row in c.execute('SELECT CLOC_LOC_ASSEMBLY, SUM(NR_OCCURRENCES) AS nr FROM GithubProjectCompletelyAnalyzed, AsmSequencesInAnalyzedGithubProjects WHERE GithubProjectCompletelyAnalyzed.ID = AsmSequencesInAnalyzedGithubProjects.GITHUB_PROJECT_ID GROUP BY GITHUB_PROJECT_ID'):
+        print('%s;%d' % row)
+    sys.stdout.close()
+
+    sys.stdout = open(output_dir + '/scatterplot_github_nr_forks.csv', 'w+')
+    print('github_nr_forks;nr_inline_snippets')
+    for row in c.execute('SELECT GITHUB_NR_FORKS, SUM(NR_OCCURRENCES) AS nr FROM GithubProjectCompletelyAnalyzed, AsmSequencesInAnalyzedGithubProjects WHERE GithubProjectCompletelyAnalyzed.ID = AsmSequencesInAnalyzedGithubProjects.GITHUB_PROJECT_ID GROUP BY GITHUB_PROJECT_ID'):
+        print('%s;%d' % row)
+    sys.stdout.close()
+
 def show_stats(output_dir):
     #print("Instruction count over all projects and sequences:")
     #for row in c.execute('SELECT AsmInstruction.ID, AsmInstruction.INSTRUCTION, SUM(AsmSequencesInGithubProject.NR_OCCURRENCES) total_count FROM AsmSequenceInstruction, AsmInstruction, AsmSequencesInGithubProject WHERE AsmInstruction.ID = AsmSequenceInstruction.ASM_INSTRUCTION_ID AND AsmSequencesInGithubProject.ASM_SEQUENCE_ID = AsmSequenceInstruction.ASM_SEQUENCE_ID GROUP BY AsmInstruction.INSTRUCTION, AsmInstruction.ID ORDER BY total_count DESC'):
     #    print("{:<20} {:<10}".format(row[1], row[2]))
     #    print("'%s' \t %d" % (row[1], row[2]))
+
     print("Number of times an instruction is contained in different projects:")
     for row in c.execute('SELECT * FROM InlineAssemblyInstructionsInProjects ORDER BY count desc;'):
         print("{:<20} {:<10}".format(row[1], row[2]))
 
-    sys.stdout = open(output_dir + '/commands.tex', 'w+')
+    #max_commits = c.execute('SELECT MAX(GIT_NR_COMMITS) FROM GithubProjectWithInlineAsm').fetchone()[0]
+    #nr_buckets = 20
+    #count = c.execute('SELECT GIT_NR_COMMITS FROM GithubProjectWithInlineAsm ', (lower, upper, lower, upper)).fetchone()[0]
+    #for commits in range(0, nr_buckets):
+    #    lower = max_commits/nr_buckets * commits
+    #    upper = max_commits/nr_buckets * (commits + 1)
+    #    count = c.execute('SELECT COUNT(*) * 100.0 / (SELECT COUNT(*) FROM GithubProject WHERE GIT_NR_COMMITS > ? AND GIT_NR_COMMITS <= ?) FROM GithubProjectWithInlineAsm WHERE GIT_NR_COMMITS > ? AND GIT_NR_COMMITS <= ?', (lower, upper, lower, upper)).fetchone()[0]
+        #number_projects = c.execute('SELECT COUNT(*) FROM GithubProject WHERE GIT_NR_COMMITS > ? AND GIT_NR_COMMITS <= ?', (lower, upper)).fetchone()[0]
+    #    print(str(lower) + ";" + str(upper) + ";" + str(count))
+    #sys.stdout.close()
 
+    create_scatter_plot_data(output_dir)
+
+    sys.stdout = open(output_dir + '/commands.tex', 'w+')
     print_instruction_table()
     print_mnemonic_table()
 
@@ -344,6 +394,10 @@ def show_stats(output_dir):
     print_query_as_command('percentageProjectsWithInlineAsm', 'SELECT COUNT(*)*100.00 / (SELECT COUNT(*) FROM GithubProject) FROM GithubProjectWithInlineAsm', percentage=True)
     print('% percentage of checked projects of projects that have inline assembly sequences (checked + unchecked)')
     print_query_as_command('percentageCheckedProjectsWithInlineAsm', 'SELECT COUNT(*)*100.00 / (SELECT COUNT(*) FROM GithubProjectWithInlineAsm) FROM GithubProjectWithCheckedInlineAsm', percentage=True)
+    print('% percentage of popular projects that use inline assembly')
+    print_query_as_command('percentageProjectsWithInlineAssemblyByPopularity', 'SELECT COUNT(*) * 100.0 / (SELECT COUNT(*) FROM GithubProject WHERE GITHUB_NR_STARGAZERS >= ' + checked_down_to_stars +') FROM GithubProjectWithInlineAsm WHERE GITHUB_NR_STARGAZERS >= ' + checked_down_to_stars, percentage=True)
+    print('% percentage of other projects that use inline assembly')
+    print_query_as_command('percentageProjectsWithInlineAssemblyByOther', 'SELECT COUNT(*) * 100.0 / (SELECT COUNT(*) FROM GithubProject WHERE GITHUB_NR_STARGAZERS < ' + checked_down_to_stars +') FROM GithubProjectWithInlineAsm WHERE GITHUB_NR_STARGAZERS < ' + checked_down_to_stars, percentage=True)
 
 
     print('\n%############ statistics about unchecked projects')
@@ -424,6 +478,7 @@ def show_stats(output_dir):
         nr_occurrences = c.execute('SELECT SUM(NR_OCCURRENCES)*100.0 / (SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects WHERE number_instructions <= ?', (nr_instructions,)).fetchone()[0]
         print(str(nr_instructions) + ';' + str(nr_occurrences))
     sys.stdout.close()
+
 
 def add_keywords_to_project(url, keywords):
     keyword_tokens = keywords.split(',')
