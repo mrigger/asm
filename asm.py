@@ -458,6 +458,15 @@ def show_stats(output_dir):
     print_query_as_command('percentageProjectsWithRandomNumber', query + "LIKE 'rdrand'", percentage=True)
     print_query_as_command('percentageProjectsWithFeatureDetection', query + "IN ('cpuid', 'xgetbv')", percentage=True)
 
+    print('\n%########## statistics about macro assembly')
+    print('% total number of projects that contain macro assembler instructions')
+    print_query_as_command('nrProjectsWithMacroAssembly', 'SELECT COUNT(*) FROM GithubProject WHERE CLOC_LOC_ASSEMBLY > 0')
+    print('% percentage of projects with macro assembler instructions (projects with .S files)')
+    print_query_as_command('percentageProjectsWithMacroAssembly', 'SELECT COUNT(*) * 100.0 / (SELECT COUNT(*) From GithubProject) FROM GithubProject WHERE CLOC_LOC_ASSEMBLY > 0', percentage=True)
+    print('% avg number of macro assembly LOC in projects that use macro assembly')
+    print_query_as_command('avgLocMacroAssembly', 'SELECT SUM(CLOC_LOC_ASSEMBLY) * 1.0 / (SELECT COUNT(*) From GithubProject) FROM GithubProject WHERE CLOC_LOC_ASSEMBLY > 0', roundn=True)
+    print('% percentage of projects with inline assembler that also contain macro assembler instructions')
+    print_query_as_command('percentageProjectsWithMacroAssemblyInlineAssemblyProjects', 'SELECT COUNT(*) * 100.0 / (SELECT COUNT(*) From GithubProjectWithInlineAsm) FROM GithubProjectWithInlineAsm WHERE CLOC_LOC_ASSEMBLY > 0', percentage=True)
     sys.stdout.close()
 
 
