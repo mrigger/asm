@@ -505,6 +505,8 @@ def show_stats(output_dir):
     print_query_as_command('percentageProjectsWithRandomNumber', query % "LIKE 'rdrand'", percentage=True)
     print_query_as_command('percentageProjectsWithFeatureDetection', query % "IN ('cpuid', 'xgetbv')", percentage=True)
     print_query_as_command('percentageProjectsWithAES', query % "IN ('aesdec', 'aesdeclast', 'aesenc', 'aesenclast', 'aesimc', 'aeskeygena')", percentage=True)
+    print_query_as_command('percentageProjectsWithDebugInterrupt', query % "IS 'int $0x03'", percentage=True)
+    print_query_as_command('percentageProjectsWithSIMD', query % "IN ('pxor', 'movdqa', 'movdqu', 'psrlq', 'pclmulqdq', 'pshufd', 'pslldq', 'pslldq', 'psllq', 'psrldq')", percentage=True)
 
     print('\n%########## statistics about macro assembly')
     print('% total number of projects that contain macro assembler instructions')
