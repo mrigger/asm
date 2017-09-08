@@ -244,67 +244,56 @@ def print_as_command(command, content, roundn=False, percentage=False):
 def escape_latex(str):
     return str.replace('#', '\#').replace('$', '\$')
 
+def print_table_start(name, columns, caption):
+    print("\\newcommand{\\%s}{" % name)
+    print("\\begin{table}[]")
+    print("\\caption{%s}" % caption)
+    print("\\centering")
+    print("\\begin{tabular}{l", end='')
+    for i in range(columns-1): print("|l", end='')
+    print("}")
+
+def print_table_end(label):
+    print("""\\end{tabular}
+\\label{%s}
+\\end{table}}""" % label)
+
 def print_instruction_table(nr_instructions=3):
     # print latex table
-    print("""\\newcommand{\\instructiontable}{\\begin{table}[]
-\\centering
-\\begin{tabular}{|l|l|l|}
-\\hline""")
+    print_table_start(name="instructiontable", columns=3, caption="The most common instructions")
+    print("instruction & \# & percentage \\\\ \hline")
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE count >= ' + str(nr_instructions) + ' ORDER BY count desc;'):
-        print("%s & %s & %.1f\%% \\\\ \hline" % (escape_latex(row[1]), row[2], row[3]))
-    print("""\\end{tabular}
-\\caption{The most common instructions}
-\\label{tbl:common-instructions}
-\\end{table}}""")
+        print("%s & %s & %.1f\%% \\\\" % (escape_latex(row[1]), row[2], row[3]))
+    print_table_end(label="tbl:common-instructions")
 
 def print_mnemonic_table(nr_projects=5):
     """ Prints the table of project-unique instruction sequences that contain non-mnemonic instructions. """
-    print("""\\newcommand{\\mnemonictable}{\\begin{table}[]
-\\centering
-\\begin{tabular}{|l|l|}
-\\hline""")
+    print_table_start("mnemonictable", columns=2, caption="Instruction sequences that did not use mnemonics and where used in at least " + str(nr_projects) + " projects")
+    print("instruction & \# non-mnemonic usages \\\\ \hline")
     for row in c.execute('SELECT INSTRUCTIONS, COUNT (DISTINCT AsmSequencesInAnalyzedGithubProjects.GITHUB_PROJECT_ID) count FROM AsmSequencesInAnalyzedGithubProjects, AsmSequence WHERE MNEMONIC = 0 AND AsmSequencesInAnalyzedGithubProjects.ASM_SEQUENCE_ID = AsmSequence.ID GROUP BY AsmSequence.ID HAVING count >= ? ORDER BY count DESC;', (nr_projects,)):
-        print("%s & %s \\\\ \hline" % (escape_latex(row[0]), row[1]))
-    print("""\\end{tabular}
-\\caption{Instruction sequences that did not use mnemonics and where used in at least """ + str(nr_projects) + """ projects}
-\\label{tbl:no-mnemonics}
-\\end{table}}""")
+        print("%s & %s \\\\" % (escape_latex(row[0]), row[1]))
+    print_table_end("tbl:no-mnemonics")
 
 def print_domain_table(nr_projects=7):
-    print("""\\newcommand{\\domaintable}{\\begin{table}[]
-\\centering
-\\begin{tabular}{|l|l|}
-\\hline""")
+    print_table_start(name="domaintable", columns=2, caption="Different domains of projects with inline assembly containing at least " + str(nr_projects) + " projects")
+    print("domain & \# projects \\\\ \hline")
     for row in c.execute('SELECT COUNT(*) as count, MAIN_CATEGORY FROM GithubProjectWithInlineAsm GROUP BY MAIN_CATEGORY HAVING count >= ? ORDER BY count DESC', (nr_projects, )):
-        print("%s & %s \\\\ \hline" % (row[1], row[0]))
-    print("""\\end{tabular}
-\\caption{Different domains of projects with inline assembly containing at least """ + str(nr_projects) + """ projects}
-\\label{tbl:domains}
-\\end{table}}""")
+        print("%s & %s \\\\" % (row[1], row[0]))
+    print_table_end("tbl:domains")
 
 def print_lock_table(nr_projects=1):
-    print("""\\newcommand{\\locktable}{\\begin{table}[]
-\\centering
-\\begin{tabular}{|l|l|}
-\\hline""")
+    print_table_start(name="locktable", columns=2, caption="Number of projects that use atomic instructions (with at least " + str(nr_projects) + " using them)")
+    print("instruction & \# \\\\ \hline")
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE INSTRUCTION LIKE "lock%" AND count >= ?', (nr_projects, )):
-        print("%s & %s \\\\ \hline" % (row[1], row[2]))
-    print("""\\end{tabular}
-\\caption{Number of projects that use atomic instructions (with at least """ + str(nr_projects) + """ using them)}
-\\label{tbl:lock}
-\\end{table}}""")
+        print("%s & %s \\\\" % (row[1], row[2]))
+    print_table_end(label="tbl:lock")
 
 def print_control_flow_table(nr_projects=1):
-    print("""\\newcommand{\\controlflowtable}{\\begin{table}[]
-\\centering
-\\begin{tabular}{|l|l|}
-\\hline""")
+    print_table_start(name="controlflowtable", columns=2, caption="Number of projects that use control-flow instructions (with at least " + str(nr_projects) + " using them)")
+    print("instruction & \# \\\\ \hline")
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE INSTRUCTION LIKE "j%" OR INSTRUCTION IN ("cmp", "test") AND count >= ?', (nr_projects, )):
-        print("%s & %s \\\\ \hline" % (row[1], row[2]))
-    print("""\\end{tabular}
-\\caption{Number of projects that use control-flow instructions (with at least """ + str(nr_projects) + """ using them)}
-\\label{tbl:controlflow}
-\\end{table}}""")
+        print("%s & %s \\\\" % (row[1], row[2]))
+    print_table_end(label="tbl:controlflow")
 
 def database_integrity_tests():
     if c.execute('SELECT COUNT(*) FROM AsmSequencesInGithubProjectUnfiltered WHERE ASM_SEQUENCE_ID NOT IN (SELECT ID FROM AsmSequence)').fetchone()[0] != 0:
