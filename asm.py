@@ -261,7 +261,7 @@ def print_table_end(label):
 def print_instruction_table(nr_instructions=3):
     # print latex table
     print_table_start(name="instructiontable", columns=3, caption="The most common instructions")
-    print("instruction & \# & percentage \\\\ \hline")
+    print("instruction & \# & contained in \% projects with inline assembly \\\\ \hline")
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE count >= ' + str(nr_instructions) + ' ORDER BY count desc;'):
         print("%s & %s & %.1f\%% \\\\" % (escape_latex(row[1]), row[2], row[3]))
     print_table_end(label="tbl:common-instructions")
@@ -275,10 +275,14 @@ def print_mnemonic_table(nr_projects=5):
     print_table_end("tbl:no-mnemonics")
 
 def print_domain_table(nr_projects=7):
-    print_table_start(name="domaintable", columns=2, caption="Different domains of projects with inline assembly containing at least " + str(nr_projects) + " projects")
+    print_table_start(name="domaintable", columns=2, caption="Domains of inline assembly projects (each domain containing more than " + str(nr_projects-1) + " projects)")
     print("domain & \# projects \\\\ \hline")
     for row in c.execute('SELECT COUNT(*) as count, MAIN_CATEGORY FROM GithubProjectWithInlineAsm GROUP BY MAIN_CATEGORY HAVING count >= ? ORDER BY count DESC', (nr_projects, )):
-        print("%s & %s \\\\" % (row[1], row[0]))
+        replacements = {
+            'TODO' : 'misc',
+        }
+        name = replacements.get(row[1], row[1])
+        print("%s & %s \\\\" % (name, row[0]))
     print_table_end("tbl:domains")
 
 def print_lock_table(nr_projects=1):
@@ -421,7 +425,7 @@ def show_stats(output_dir):
     print('% percentage of projects that contain one or more inline assembly sequences')
     print_query_as_command('percentageProjectsWithInlineAsm', 'SELECT COUNT(*)*100.00 / (SELECT COUNT(*) FROM GithubProject) FROM GithubProjectWithInlineAsm', percentage=True)
     print('% percentage of checked projects of projects that have inline assembly sequences (checked + unchecked)')
-    print_query_as_command('percentageCheckedProjectsWithInlineAsm', 'SELECT COUNT(*)*100.00 / (SELECT COUNT(*) FROM GithubProjectWithInlineAsm) FROM GithubProjectWithCheckedInlineAsm', percentage=True)
+    print_query_as_command('percentageCheckedProjectsWithInlineAsm', 'SELECT 100-COUNT(*)*100.00 / (SELECT COUNT(*) FROM GithubProjectWithInlineAsm) FROM GithubProjectNotCompletelyAnalyzed', percentage=True)
     print('% percentage of popular projects that use inline assembly')
     print_query_as_command('percentageProjectsWithInlineAssemblyByPopularity', 'SELECT COUNT(*) * 100.0 / (SELECT COUNT(*) FROM GithubProject WHERE GITHUB_NR_STARGAZERS >= ' + checked_down_to_stars +') FROM GithubProjectWithInlineAsm WHERE GITHUB_NR_STARGAZERS >= ' + checked_down_to_stars, percentage=True)
     print('% percentage of other projects that use inline assembly')
@@ -506,8 +510,44 @@ def show_stats(output_dir):
     print_query_as_command('avgLocMacroAssembly', 'SELECT SUM(CLOC_LOC_ASSEMBLY) * 1.0 / (SELECT COUNT(*) From GithubProject) FROM GithubProject WHERE CLOC_LOC_ASSEMBLY > 0', roundn=True)
     print('% percentage of projects with inline assembler that also contain macro assembler instructions')
     print_query_as_command('percentageProjectsWithMacroAssemblyInlineAssemblyProjects', 'SELECT COUNT(*) * 100.0 / (SELECT COUNT(*) From GithubProjectWithInlineAsm) FROM GithubProjectWithInlineAsm WHERE CLOC_LOC_ASSEMBLY > 0', percentage=True)
-    sys.stdout.close()
+    
+    print('\n%########## implementation')
+    query = 'SELECT 100-COUNT(DISTINCT GITHUB_PROJECT_ID) * 100.0 / (SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) FROM AsmInstructionsInAnalyzedGithubProjects) FROM AsmInstructionsInAnalyzedGithubProjects WHERE INSTRUCTION NOT IN (%s)'
+    def make_list(name):
+        print('%', (','.join('"' + instr + '"' for instr in instructions)))
+        q = query % (','.join('"' + instr + '"' for instr in instructions))
+        print_query_as_command(name, q, percentage=True)
+    instructions = ()
+    make_list('percentageNoInstructionImplemented')
+    instructions = instructions + ('rdtsc', 'rdtscp')
+    make_list('percentageTimeInstructionsImplemented')
+    instructions = instructions + ('cpuid', 'xgetbv')
+    make_list('percentageFeatureInstructionsImplemented')
+    instructions = instructions + ('', 'prefetch', 'nop', 'int $0x03', 'pause', 'mfence', 'sfence', 'lfence')
+    make_list('percentageBarrierInstructionsImplemented')
+    instructions = instructions + ('bsr', 'bsf', 'or', 'xor', 'neg', 'bswap', 'shl', 'rol', 'ror')
+    make_list('percentageByteManipulationInstructionsImplemented')
+    instructions = instructions + ('lock xchg', 'lock cmpxchg', 'lock xadd', 'lock add')#('lock xchg', 'lock cmpxchg', 'lock xadd', 'lock add', 'lock dec', 'lock inc', 'lock xor', 'lock neg', 'lock btc', 'lock btr')
+    make_list('percentageLockInstructionsImplemented')
+    instructions = instructions + ('mov', 'push', 'pop')
+    make_list('percentageMovInstructionsImplemented')
+    instructions = instructions + ('crc32',)
+    make_list('percentageCrcInstructionsImplemented')
+    instructions = instructions + ('sete', 'setz', 'setc')
+    make_list('percentageSetInstructionsImplemented')
+    instructions = instructions + ('add', 'sub', 'mul', 'adc', 'lea', 'inc', 'dec', 'div', 'imul', 'sbb')
+    make_list('percentageArithmeticInstructionsImplemented')
+    instructions = instructions + ('rdrand',)
+    make_list('rdrandInstructionsImplemented')
+    instructions = instructions + ('jmp', 'jnc') #%, 'test', 'jz', 'jnz', 'jl', 'ja', 'jbe', 'je', 'jne', 'jb', 'jnc')
+    make_list('percentageControlFlowInstructionsImplemented')
+    instructions = instructions + ('rep movsb', )
+    make_list('percentageStringInstructionsImplemented')
+    print_query_as_command('nrImplementedInstructions', 'SELECT ' + str(len(instructions)))
+    print_query_as_command('percentageImplementedTotal', 'SELECT 100-(SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) + (SELECT COUNT(*) FROM GithubProjectNotCompletelyAnalyzed) FROM AsmInstructionsInAnalyzedGithubProjects WHERE INSTRUCTION NOT IN (%s)) * 100.0 / COUNT(*) FROM GithubProjectWithInlineAsm' % (','.join('"' + instr + '"' for instr in instructions)), percentage=True)
 
+    sys.stdout.close()
+    # SELECT INSTRUCTION, COUNT(GITHUB_PROJECT_ID) as count FROM AsmInstructionsInAnalyzedGithubProjects WHERE GITHUB_PROJECT_ID IN (SELECT GITHUB_PROJECT_ID FROM AsmInstructionsInAnalyzedGithubProjects WHERE INSTRUCTION NOT IN ('rdtsc', 'rdtscp', 'cpuid', 'xgetbv', '', 'prefetch', 'nop', 'int $0x03', 'pause', 'mfence', 'sfence', 'lfence', 'bsr', 'bsf', 'or', 'and', 'xor', 'neg', 'bswap', 'shl', 'rol', 'ror', 'shr', 'lock xchg', 'lock cmpxchg', 'lock xadd', 'crc32', 'mov') GROUP BY GITHUB_PROJECT_ID HAVING COUNT(ASM_INSTRUCTION_ID) =1) GROUP BY INSTRUCTION ORDER BY count DESC
 
     # number of non-unique snippets per project (TODO: does not completely round up to 100%)
     sys.stdout = open(output_dir + '/nr_snippets.csv', 'w+')
