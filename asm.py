@@ -302,7 +302,7 @@ def print_set_byte_table(nr_projects=1):
 def print_rep_table(nr_projects=1):
     print_table_start(name="repttable", columns=2, caption="Number of projects that instructions with \code{rep} prefixes (with at least " + str(nr_projects) + " using them)")
     print("instruction & \# \\\\ \hline")
-    for row in c.execute('SELECT * FROM InstructionFrequencies WHERE INSTRUCTION LIKE "rep%" or INSTRUCTION LIKE "cld" AND count >= ?', (nr_projects, )):
+    for row in c.execute('SELECT * FROM InstructionFrequencies WHERE (INSTRUCTION LIKE "rep%" or INSTRUCTION LIKE "cld") AND count >= ?', (nr_projects, )):
         print("%s & %s \\\\" % (row[1], row[2]))
     print_table_end(label="tbl:repttable")
 
