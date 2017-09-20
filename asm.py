@@ -292,12 +292,33 @@ def print_lock_table(nr_projects=1):
         print("%s & %s \\\\" % (row[1], row[2]))
     print_table_end(label="tbl:lock")
 
+def print_set_byte_table(nr_projects=1):
+    print_table_start(name="settable", columns=2, caption="Number of projects that use set-on-condition instructions (with at least " + str(nr_projects) + " using them)")
+    print("instruction & \# \\\\ \hline")
+    for row in c.execute('SELECT * FROM InstructionFrequencies WHERE INSTRUCTION LIKE "set%" AND count >= ?', (nr_projects, )):
+        print("%s & %s \\\\" % (row[1], row[2]))
+    print_table_end(label="tbl:settable")
+
+def print_rep_table(nr_projects=1):
+    print_table_start(name="repttable", columns=2, caption="Number of projects that instructions with \code{rep} prefixes (with at least " + str(nr_projects) + " using them)")
+    print("instruction & \# \\\\ \hline")
+    for row in c.execute('SELECT * FROM InstructionFrequencies WHERE INSTRUCTION LIKE "rep%" or INSTRUCTION LIKE "cld" AND count >= ?', (nr_projects, )):
+        print("%s & %s \\\\" % (row[1], row[2]))
+    print_table_end(label="tbl:repttable")
+
 def print_control_flow_table(nr_projects=1):
     print_table_start(name="controlflowtable", columns=2, caption="Number of projects that use control-flow instructions (with at least " + str(nr_projects) + " using them)")
     print("instruction & \# \\\\ \hline")
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE INSTRUCTION LIKE "j%" OR INSTRUCTION IN ("cmp", "test") AND count >= ?', (nr_projects, )):
         print("%s & %s \\\\" % (row[1], row[2]))
     print_table_end(label="tbl:controlflow")
+
+def print_arithmetic_table(nr_projects=1):
+    print_table_start(name="arithmetictable", columns=2, caption="Number of projects that use arithmetic instructions (with at least " + str(nr_projects) + " using them)")
+    print("instruction & \# \\\\ \hline")
+    for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('xor', 'add', 'or', 'sub', 'and', 'inc', 'dec', 'mul', 'adc', 'dec', 'neg', 'lea') AND count >= ?", (nr_projects, )):
+        print("%s & %s \\\\" % (row[1], row[2]))
+    print_table_end(label="tbl:arithmetic")
 
 def database_integrity_tests():
     if c.execute('SELECT COUNT(*) FROM AsmSequencesInGithubProjectUnfiltered WHERE ASM_SEQUENCE_ID NOT IN (SELECT ID FROM AsmSequence)').fetchone()[0] != 0:
@@ -380,7 +401,10 @@ def show_stats(output_dir):
     print_mnemonic_table()
     print_domain_table()
     print_lock_table()
+    print_set_byte_table()
     print_control_flow_table()
+    print_rep_table()
+    print_arithmetic_table()
 
     print('% how often an instruction appears in different projects')
     for row in c.execute('SELECT * FROM InlineAssemblyInstructionsInProjects ORDER BY count desc;'):
@@ -490,16 +514,21 @@ def show_stats(output_dir):
     print_query_as_command('percentageHashInstructions', query % "IN ('rol', 'ror', 'shl', 'crc32')", percentage=True)
     print_query_as_command('percentageProjectsWithTimeInstructions', query % "IN ('cpuid', 'rdtsc', '')", percentage=True)
     print_query_as_command('percentageProjectsWithAtomicInstructions', query % "LIKE 'lock%'", percentage=True)
-    print_query_as_command('percentageProjectsWithArithmeticInstructions', query % "IN ('xor', 'add', 'or', 'sub', 'and', 'inc', 'dec', 'mul', 'adc', 'dec', 'neg')", percentage=True)
+    print_query_as_command('percentageProjectsWithArithmeticInstructions', query % "IN ('xor', 'add', 'or', 'sub', 'and', 'inc', 'dec', 'mul', 'adc', 'dec', 'neg', 'lea')", percentage=True)
     print_query_as_command('percentageProjectsWithPauseInstructions', query % "LIKE 'pause'", percentage=True)
     print_query_as_command('percentageProjectsWithCompilerBarriers', query % "LIKE ''", percentage=True)
     print_query_as_command('percentageProjectsWithEndiannessInstructions', query % "IN ('lock xchg', 'rol', 'ror', 'bswap')", percentage=True)
     print_query_as_command('percentageProjectsWithPrefetch', query % "LIKE 'prefetch'", percentage=True)
     print_query_as_command('percentageProjectsWithRandomNumber', query % "LIKE 'rdrand'", percentage=True)
+    print_query_as_command('percentageProjectsWithNop', query % "LIKE 'nop'", percentage=True)
+    print_query_as_command('percentageProjectsWithSet', query % "LIKE 'set%'", percentage=True)
+    print_query_as_command('percentageProjectsWithRep', query % "LIKE 'rep%' OR AsmInstruction.INSTRUCTION like 'cld'", percentage=True)
     print_query_as_command('percentageProjectsWithFeatureDetection', query % "IN ('cpuid', 'xgetbv')", percentage=True)
     print_query_as_command('percentageProjectsWithAES', query % "IN ('aesdec', 'aesdeclast', 'aesenc', 'aesenclast', 'aesimc', 'aeskeygena')", percentage=True)
     print_query_as_command('percentageProjectsWithDebugInterrupt', query % "IS 'int $0x03'", percentage=True)
     print_query_as_command('percentageProjectsWithSIMD', query % "IN ('pxor', 'movdqa', 'movdqu', 'psrlq', 'pclmulqdq', 'pshufd', 'pslldq', 'pslldq', 'psllq', 'psrldq')", percentage=True)
+    print_query_as_command('percentageProjectsWithMoves', query % "IN ('mov', 'push', 'pop', 'pushf', 'popf')", percentage=True)
+
 
     print('\n%########## statistics about macro assembly')
     print('% total number of projects that contain macro assembler instructions')
