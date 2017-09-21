@@ -275,14 +275,14 @@ def print_mnemonic_table(nr_projects=5):
     print_table_end("tbl:no-mnemonics")
 
 def print_domain_table(nr_projects=7):
-    print_table_start(name="domaintable", columns=2, caption="Domains of inline assembly projects (each domain containing more than " + str(nr_projects-1) + " projects)")
-    print("domain & \# projects \\\\ \hline")
-    for row in c.execute('SELECT COUNT(*) as count, MAIN_CATEGORY FROM GithubProjectWithInlineAsm GROUP BY MAIN_CATEGORY HAVING count >= ? ORDER BY count DESC', (nr_projects, )):
+    print_table_start(name="domaintable", columns=3, caption="Domains of inline assembly projects (each domain containing more than " + str(nr_projects-1) + " projects)")
+    print("domain & \# projects & \% of projects \\\\ \hline")
+    for row in c.execute('SELECT COUNT(*) as count, MAIN_CATEGORY, COUNT(*) * 100.0/(SELECT COUNT(*) FROM GithubProjectWithInlineAsm) as perc FROM GithubProjectWithInlineAsm GROUP BY MAIN_CATEGORY HAVING count >= ? ORDER BY count DESC', (nr_projects, )):
         replacements = {
             'TODO' : 'misc',
         }
         name = replacements.get(row[1], row[1])
-        print("%s & %s \\\\" % (name, row[0]))
+        print("%s & %s & %.1f \\\\" % (name, row[0], row[2]))
     print_table_end("tbl:domains")
 
 def print_lock_table(nr_projects=1):
@@ -570,7 +570,7 @@ def show_stats(output_dir):
     make_list('rdrandInstructionsImplemented')
     instructions = instructions + ('jmp', 'jnc') #%, 'test', 'jz', 'jnz', 'jl', 'ja', 'jbe', 'je', 'jne', 'jb', 'jnc')
     make_list('percentageControlFlowInstructionsImplemented')
-    instructions = instructions + ('rep movsb', )
+    instructions = instructions + ('rep movs', )
     make_list('percentageStringInstructionsImplemented')
     print_query_as_command('nrImplementedInstructions', 'SELECT ' + str(len(instructions)))
     print_query_as_command('percentageImplementedTotal', 'SELECT 100-(SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) + (SELECT COUNT(*) FROM GithubProjectNotCompletelyAnalyzed) FROM AsmInstructionsInAnalyzedGithubProjects WHERE INSTRUCTION NOT IN (%s)) * 100.0 / COUNT(*) FROM GithubProjectWithInlineAsm' % (','.join('"' + instr + '"' for instr in instructions)), percentage=True)
