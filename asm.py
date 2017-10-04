@@ -454,7 +454,10 @@ def show_stats(output_dir):
     print_query_as_command('percentageProjectsWithInlineAssemblyByPopularity', 'SELECT COUNT(*) * 100.0 / (SELECT COUNT(*) FROM GithubProject WHERE GITHUB_NR_STARGAZERS >= ' + checked_down_to_stars +') FROM GithubProjectWithInlineAsm WHERE GITHUB_NR_STARGAZERS >= ' + checked_down_to_stars, percentage=True)
     print('% percentage of other projects that use inline assembly')
     print_query_as_command('percentageProjectsWithInlineAssemblyByOther', 'SELECT COUNT(*) * 100.0 / (SELECT COUNT(*) FROM GithubProject WHERE GITHUB_NR_STARGAZERS < ' + checked_down_to_stars +') FROM GithubProjectWithInlineAsm WHERE GITHUB_NR_STARGAZERS < ' + checked_down_to_stars, percentage=True)
-
+    print('% average lines of code with the popularity gathering strategy')
+    print_query_as_command('AverageLinesCodeByPopularity', 'SELECT (SUM(CLOC_LOC_C)+SUM(CLOC_LOC_H) * 1.0) / (SELECT COUNT(*) FROM GithubProject WHERE GITHUB_NR_STARGAZERS >= ' + checked_down_to_stars +') FROM GithubProjectWithInlineAsm WHERE GITHUB_NR_STARGAZERS >= ' + checked_down_to_stars, roundn=True)
+    print('% average lines of code with the other gathering strategy')
+    print_query_as_command('AverageLinesCodeByOther', 'SELECT (SUM(CLOC_LOC_C)+SUM(CLOC_LOC_H) * 1.0) / (SELECT COUNT(*) FROM GithubProject WHERE GITHUB_NR_STARGAZERS < ' + checked_down_to_stars +') FROM GithubProjectWithInlineAsm WHERE GITHUB_NR_STARGAZERS < ' + checked_down_to_stars, roundn=True)
 
     print('\n%############ statistics about unchecked projects')
     print('% number of projects that we did not analyze because the contained too large/many inline assembly snippets (or we yet have to analyze)')
