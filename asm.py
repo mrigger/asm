@@ -424,7 +424,7 @@ def show_stats(output_dir):
         print_as_command(instr_name + 'ProjectCount', row[2])
     # SELECT COUNT(*) / (SELECT COUNT(*)*1.0 FROM GithubProject WHERE GITHUB_NR_STARGAZERS > 1000) FROM GithubProjectWithInlineAsm WHERE GITHUB_NR_STARGAZERS > 1000
     print('% total LOC of .c and .h files')
-    print_query_as_command('loc', 'SELECT SUM(CLOC_LOC_H+CLOC_LOC_C) FROM GithubProject;')
+    print_query_as_command('mloc', 'SELECT SUM(CLOC_LOC_H+CLOC_LOC_C)/1000000 FROM GithubProject;')
     print('% total number of projects')
     print_query_as_command('nrProjects', 'SELECT COUNT(*) FROM GithubProject;')#
     print('% total number of unique instructions')
@@ -471,6 +471,8 @@ def show_stats(output_dir):
     print('\n%############ statistics about inline assembly frequences')
     print('\n% average number of inline assembly snippets computed over the set of projects that use inline assembly')
     print_query_as_command('avgNrInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT SUM(NR_OCCURRENCES) as number FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID);', roundn=True)
+    print('% median number of inline assembly snippets computed over the set of projects that use inline assembly')
+    print_query_as_command('medianNrInlineAssemblySnippets', 'SELECT SUM(NR_OCCURRENCES) as number FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID ORDER BY number LIMIT 1 OFFSET (SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) / 2 FROM AsmSequencesInAnalyzedGithubProjects)')
     print('% average number of unique inline assembly snippets computed over the set of projects that use inline assembly')
     print_query_as_command('avgNrUniqueInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT COUNT(DISTINCT ASM_SEQUENCE_ID) as number FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID);', roundn=True)
     print('% total number of inline assembly snippets')
@@ -481,6 +483,8 @@ def show_stats(output_dir):
     print_query_as_command('nrFileUniqueInlineAssemblySnippets', 'SELECT COUNT(ASM_SEQUENCE_ID) FROM AsmSequencesInAnalyzedGithubProjects;')
     print('% average number of inline assembly snippets per instruction')
     print_query_as_command('avgNrInlineAssemblyInstructionsPerSnippet', 'SELECT AVG(number_instructions * NR_OCCURRENCES) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects;', roundn=True)
+    print('% median number of inline assembly snippets per instruction')
+    print_query_as_command('medianInlineAssemblyInstructionsPerSnippet', 'SELECT number_instructions * NR_OCCURRENCES as nr_instructions FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects ORDER BY nr_instructions LIMIT 1  OFFSET (SELECT (COUNT(*) - 1)  / 2 FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects)')
     print('% number of inline assembly snippets with one instruction')
     print_query_as_command('nrInlineAssemblySnippetsWithOnlyOneInstruction', 'SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects WHERE number_instructions = 1')
     print('% percentage of inline assembly snippets with one instruction')
