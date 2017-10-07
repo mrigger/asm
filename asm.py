@@ -173,6 +173,12 @@ jump_synonyms = {
         'jge' : ['jge', 'jnle'],
 }
 
+set_synonyms = {
+    'setz' : ['sete', 'setz'],
+    'setc' : ['setc', 'setb'],
+    'setnz' : ['setne', 'setnz']
+}
+
 def check_for_invalid_instructions(instrs):
     """ Checks that a list of instruction does not contain any invalid instructions (not the right format) """
     for instr in instrs:
@@ -193,9 +199,13 @@ def check_for_invalid_instructions(instrs):
             if not re.match('int \$0x[0-9a-f]{2}', instr):
                 print('Please use the format "int $0xa3" to specify numbers in int instructions! ' + instr)
                 exit(-1)
-        # todo: this should have been written using a table
         for main_synonym in jump_synonyms:
             secondary_synonyms = jump_synonyms.get(main_synonym)
+            if instr in secondary_synonyms and instr is not main_synonym:
+                print('found ' + instr + '. Please use ' + main_synonym)
+                exit(-1)
+        for main_synonym in set_synonyms:
+            secondary_synonyms = set_synonyms.get(main_synonym)
             if instr in secondary_synonyms and instr is not main_synonym:
                 print('found ' + instr + '. Please use ' + main_synonym)
                 exit(-1)
@@ -316,7 +326,12 @@ def print_set_byte_table(nr_projects=1):
     print_table_start(name="settable", columns=2, caption="Number of projects that use set-on-condition instructions (with at least " + str(nr_projects) + " using them)")
     print("instruction & \# \\\\ \hline")
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE INSTRUCTION LIKE "set%" AND count >= ?', (nr_projects, )):
-        print("%s & %s \\\\" % (row[1], row[2]))
+        synonyms = set_synonyms.get(row[1])
+        if synonyms is None:
+            label = row[1]
+        else:
+            label = "/".join(synonyms)
+        print("%s & %s \\\\" % (label, row[2]))
     print_table_end(label="tbl:settable")
 
 def print_rep_table(nr_projects=1):
@@ -334,7 +349,7 @@ def print_control_flow_table(nr_projects=1):
         if synonyms is None:
             label = row[1]
         else:
-            label = ", ".join(synonyms)
+            label = "/".join(synonyms)
         print("%s & %s \\\\" % (label, row[2]))
     print_table_end(label="tbl:controlflow")
 
