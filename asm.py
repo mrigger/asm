@@ -160,6 +160,19 @@ def add_asm_instruction(instr, testcase=None):
         c.execute('update AsmInstruction set TEST_CASE=? where INSTRUCTION =?', (formatted_testcase, instr))
     conn.commit()
 
+jump_synonyms = {
+        'jz' : ['jz', 'je'],
+        'jnz' : ['jne', 'jnz'],
+        'jc' : ['jb', 'jnae', 'jc'],
+        'jnc' : ['jnb', 'jae', 'jnc'],
+        'jbe' :  ['jbe', 'jna'],
+        'ja' :  ['ja', 'jnbe'],
+        'jl' : ['jl', 'jnge'],
+        'jge' : ['jge', 'jnl'],
+        'jle' : ['jle', 'jng'],
+        'jge' : ['jge', 'jnle'],
+}
+
 def check_for_invalid_instructions(instrs):
     """ Checks that a list of instruction does not contain any invalid instructions (not the right format) """
     for instr in instrs:
@@ -181,45 +194,11 @@ def check_for_invalid_instructions(instrs):
                 print('Please use the format "int $0xa3" to specify numbers in int instructions! ' + instr)
                 exit(-1)
         # todo: this should have been written using a table
-        if instr == 'je':
-            print('Please use jz')
-            exit(-1)
-        if instr == 'jne':
-            print('Please use jnz')
-            exit(-1)
-        if instr in ('jb', 'jnae'):
-            print('Please use jc')
-            exit(-1)
-        if instr in ('jnb', 'jae'):
-            print('Please use jnc')
-            exit(-1)
-        if instr == 'jna':
-            print('Please use jbe')
-            exit(-1)
-        if instr == 'jnbe':
-            print('Please use ja')
-            exit(-1)
-        if instr == 'jnge':
-            print('Please use jl')
-            exit(-1)
-        if instr == 'jnl':
-            print('Please use jge')
-            exit(-1)
-        if instr == 'jng':
-            print('Please use jle')
-            exit(-1)
-        if instr == 'jnle':
-            print('Please use jge')
-            exit(-1)
-        if instr == 'jpe':
-            print('Please use jp')
-            exit(-1)
-        if instr == 'jpo':
-            print('Please use jnp')
-            exit(-1)
-        if instr == 'jecxz':
-            print('Please use jcxz')
-            exit(-1)
+        for main_synonym in jump_synonyms:
+            secondary_synonyms = jump_synonyms.get(main_synonym)
+            if instr in secondary_synonyms and instr is not main_synonym:
+                print('found ' + instr + '. Please use ' + main_synonym)
+                exit(-1)
 
 def add_asm_sequence(instrs, testcase, note=''):
     """ Inserts an ordered list of assembly instruction and creates the individual assembly instructions if they do not exist yet. """
@@ -351,7 +330,12 @@ def print_control_flow_table(nr_projects=1):
     print_table_start(name="controlflowtable", columns=2, caption="Number of projects that use control-flow instructions (with at least " + str(nr_projects) + " using them)")
     print("instruction & \# \\\\ \hline")
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE INSTRUCTION LIKE "j%" OR INSTRUCTION IN ("cmp", "test") AND count >= ?', (nr_projects, )):
-        print("%s & %s \\\\" % (row[1], row[2]))
+        synonyms = jump_synonyms.get(row[1])
+        if synonyms is None:
+            label = row[1]
+        else:
+            label = ", ".join(synonyms)
+        print("%s & %s \\\\" % (label, row[2]))
     print_table_end(label="tbl:controlflow")
 
 def print_arithmetic_table(nr_projects=1):
