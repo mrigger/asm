@@ -174,11 +174,52 @@ def check_for_invalid_instructions(instrs):
             exit(-1)
         if instr == 'xchg':
             print('Please insert "xchg" as "lock xchg"!')
+            exit(-1)
         # check the interrupt format
         if re.match('int .*', instr):
             if not re.match('int \$0x[0-9a-f]{2}', instr):
                 print('Please use the format "int $0xa3" to specify numbers in int instructions! ' + instr)
                 exit(-1)
+        # todo: this should have been written using a table
+        if instr == 'je':
+            print('Please use jz')
+            exit(-1)
+        if instr == 'jne':
+            print('Please use jnz')
+            exit(-1)
+        if instr in ('jb', 'jnae'):
+            print('Please use jc')
+            exit(-1)
+        if instr in ('jnb', 'jae'):
+            print('Please use jnc')
+            exit(-1)
+        if instr == 'jna':
+            print('Please use jbe')
+            exit(-1)
+        if instr == 'jnbe':
+            print('Please use ja')
+            exit(-1)
+        if instr == 'jnge':
+            print('Please use jl')
+            exit(-1)
+        if instr == 'jnl':
+            print('Please use jge')
+            exit(-1)
+        if instr == 'jng':
+            print('Please use jle')
+            exit(-1)
+        if instr == 'jnle':
+            print('Please use jge')
+            exit(-1)
+        if instr == 'jpe':
+            print('Please use jp')
+            exit(-1)
+        if instr == 'jpo':
+            print('Please use jnp')
+            exit(-1)
+        if instr == 'jecxz':
+            print('Please use jcxz')
+            exit(-1)
 
 def add_asm_sequence(instrs, testcase, note=''):
     """ Inserts an ordered list of assembly instruction and creates the individual assembly instructions if they do not exist yet. """
@@ -477,6 +518,8 @@ def show_stats(output_dir):
     print_query_as_command('avgNrUniqueInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT COUNT(DISTINCT ASM_SEQUENCE_ID) as number FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID);', roundn=True)
     print('% total number of inline assembly snippets')
     print_query_as_command('nrInlineAssemblySnippets', 'SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesInAnalyzedGithubProjects;')
+    print('% inline assembly fragment in every k LOC')
+    print_query_as_command('inlineAssemblyFragmentInEveryKLoc', 'SELECT (SUM(CLOC_LOC_H+CLOC_LOC_C)/(SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesInAnalyzedGithubProjects))/1000 FROM GithubProjectCompletelyAnalyzed;')
     print('% total number of unique inline assembly snippets')
     print_query_as_command('nrUniqueInlineAssemblySnippets', 'SELECT COUNT(DISTINCT ASM_SEQUENCE_ID) FROM AsmSequencesInAnalyzedGithubProjects;')
     print('% total number of file-unique inline assembly snippets')
