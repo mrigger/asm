@@ -290,11 +290,16 @@ def print_table_end(label):
 
 def print_instruction_table(nr_instructions=3):
     # print latex table
-    print_table_start(name="instructiontable", columns=3, caption="The most common instructions")
-    print("instruction & \# & contained in \% projects with inline assembly \\\\ \hline")
+    print("""\\newcommand{\\instructiontable}{
+\\begin{center}
+\\topcaption{Instruction table that were contained in at least """ + str(nr_instructions) + """ projects}
+\\tablehead{instruction & \\# projects & \\% projects \\\\ \hline}
+\\label{tbl:common-instructions}
+\\begin{xtabular}{l|l|l}""")
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE count >= ' + str(nr_instructions) + ' ORDER BY count desc;'):
         print("%s & %s & %.1f\%% \\\\" % (escape_latex(row[1]), row[2], row[3]))
-    print_table_end(label="tbl:common-instructions")
+    print("""\\end{xtabular}
+\\end{center}}""")
 
 def print_mnemonic_table(nr_projects=5):
     """ Prints the table of project-unique instruction sequences that contain non-mnemonic instructions. """
