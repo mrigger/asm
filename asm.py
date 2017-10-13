@@ -274,10 +274,14 @@ def print_as_command(command, content, roundn=False, percentage=False):
 def escape_latex(str):
     return str.replace('#', '\#').replace('$', '\$')
 
-def print_table_start(name, columns, caption):
+def print_table_start(name, columns, caption, nr_projects=None):
+    if nr_projects is None or nr_projects == 1:
+        append = ''
+    else:
+        append = ' (with at least ' + str(nr_projects) + ' using them)'
     print("\\newcommand{\\%s}{" % name)
     print("\\begin{table}[]")
-    print("\\caption{%s}" % caption)
+    print("\\caption{%s}" % (caption + append))
     print("\\centering")
     print("\\begin{tabular}{l", end='')
     for i in range(columns-1): print("|l", end='')
@@ -303,7 +307,7 @@ def print_instruction_table(nr_instructions=3):
 
 def print_mnemonic_table(nr_projects=5):
     """ Prints the table of project-unique instruction sequences that contain non-mnemonic instructions. """
-    print_table_start("mnemonictable", columns=2, caption="Instruction sequences that did not use mnemonics and where used in at least " + str(nr_projects) + " projects")
+    print_table_start("mnemonictable", columns=2, caption="Instruction sequences that did not use mnemonics", nr_projects=nr_projects)
     print("instruction & \# non-mnemonic usages \\\\ \hline")
     for row in c.execute('SELECT INSTRUCTIONS, COUNT (DISTINCT AsmSequencesInAnalyzedGithubProjects.GITHUB_PROJECT_ID) count FROM AsmSequencesInAnalyzedGithubProjects, AsmSequence WHERE MNEMONIC = 0 AND AsmSequencesInAnalyzedGithubProjects.ASM_SEQUENCE_ID = AsmSequence.ID GROUP BY AsmSequence.ID HAVING count >= ? ORDER BY count DESC;', (nr_projects,)):
         print("%s & %s \\\\" % (escape_latex(row[0]), row[1]))
@@ -311,7 +315,7 @@ def print_mnemonic_table(nr_projects=5):
 
 def print_domain_table(nr_projects=7):
     print("""\\newcommand{\\domaintable}{\\begin{table}[]
-\\caption{Domains of inline assembly projects (each domain containing more than """ + str(nr_projects) + """ projects)}
+\\caption{Domains of projects that use inline assembly (each domain containing at least """ + str(nr_projects) + """ projects)}
 \\centering
 \\begin{tabular}{p{1.8cm}|l|l|p{4.2cm}}""")
     print("& \# of & \% of & \\\\\\cline{2-3}")
@@ -338,14 +342,14 @@ def print_domain_table(nr_projects=7):
     print_table_end("tbl:domains")
 
 def print_lock_table(nr_projects=1):
-    print_table_start(name="locktable", columns=2, caption="Number of projects that use atomic instructions (with at least " + str(nr_projects) + " using them)")
+    print_table_start(name="locktable", columns=2, caption="Instructions for atomics", nr_projects=nr_projects)
     print("instruction & \# \\\\ \hline")
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE INSTRUCTION LIKE "lock%" AND count >= ?', (nr_projects, )):
         print("%s & %s \\\\" % (row[1], row[2]))
     print_table_end(label="tbl:lock")
 
 def print_set_byte_table(nr_projects=1):
-    print_table_start(name="settable", columns=2, caption="Number of projects that use set-on-condition instructions (with at least " + str(nr_projects) + " using them)")
+    print_table_start(name="settable", columns=2, caption="Number of projects that use set-on-condition instructions", nr_projects=nr_projects)
     print("instruction & \# \\\\ \hline")
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE INSTRUCTION LIKE "set%" AND count >= ?', (nr_projects, )):
         synonyms = set_synonyms.get(row[1])
@@ -357,14 +361,14 @@ def print_set_byte_table(nr_projects=1):
     print_table_end(label="tbl:settable")
 
 def print_rep_table(nr_projects=1):
-    print_table_start(name="repttable", columns=2, caption="Number of projects that instructions with \code{rep} prefixes (with at least " + str(nr_projects) + " using them)")
+    print_table_start(name="repttable", columns=2, caption="Number of projects that instructions with \code{rep} prefixes", nr_projects=nr_projects)
     print("instruction & \# \\\\ \hline")
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE (INSTRUCTION LIKE "rep%" or INSTRUCTION LIKE "cld") AND count >= ?', (nr_projects, )):
         print("%s & %s \\\\" % (row[1], row[2]))
     print_table_end(label="tbl:repttable")
 
 def print_control_flow_table(nr_projects=1):
-    print_table_start(name="controlflowtable", columns=2, caption="Number of projects that use control-flow instructions (with at least " + str(nr_projects) + " using them)")
+    print_table_start(name="controlflowtable", columns=2, caption="Number of projects that use control-flow instructions", nr_projects=nr_projects)
     print("instruction & \# \\\\ \hline")
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE INSTRUCTION LIKE "j%" OR INSTRUCTION IN ("cmp", "test") AND count >= ?', (nr_projects, )):
         synonyms = jump_synonyms.get(row[1])
@@ -376,7 +380,7 @@ def print_control_flow_table(nr_projects=1):
     print_table_end(label="tbl:controlflow")
 
 def print_arithmetic_table(nr_projects=1):
-    print_table_start(name="arithmetictable", columns=2, caption="Number of projects that use arithmetic instructions (with at least " + str(nr_projects) + " using them)")
+    print_table_start(name="arithmetictable", columns=2, caption="Instructions for arithmetics", nr_projects=nr_projects)
     print("instruction & \# \\\\ \hline")
     for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('xor', 'add', 'or', 'sub', 'and', 'inc', 'dec', 'mul', 'adc', 'dec', 'neg', 'lea') AND count >= ?", (nr_projects, )):
         print("%s & %s \\\\" % (row[1], row[2]))
@@ -507,7 +511,7 @@ def show_stats(output_dir):
     print('% number of projects projects that use inline assembly')
     print_query_as_command('nrProjectsWithInlineAssembly', 'SELECT COUNT(*) FROM GithubProjectWithInlineAsm')
     print('% number of checked projects (i.e., excluding those where we did not analyze the single instruction sequences) that use inline assembly')
-    print_query_as_command('nrCheckedProjectsWithInlineAssembly', 'SELECT COUNT(*) FROM GithubProjectWithCheckedInlineAsm')
+    print_query_as_command('nrCheckedProjectsWithInlineAssembly', 'SELECT COUNT(*) - ((SELECT COUNT(*) FROM GithubProjectNotCompletelyAnalyzed)) FROM GithubProjectWithInlineAsm')
     print('% percentage of projects that contain one or more inline assembly sequences')
     print_query_as_command('percentageProjectsWithInlineAsm', 'SELECT COUNT(*)*100.00 / (SELECT COUNT(*) FROM GithubProject) FROM GithubProjectWithInlineAsm', percentage=True)
     print('% percentage of checked projects of projects that have inline assembly sequences (checked + unchecked)')
@@ -541,8 +545,16 @@ def show_stats(output_dir):
     print_query_as_command('nrInlineAssemblySnippets', 'SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesInAnalyzedGithubProjects;')
     print('% inline assembly fragment in every k LOC')
     print_query_as_command('inlineAssemblyFragmentInEveryKLoc', 'SELECT (SUM(CLOC_LOC_H+CLOC_LOC_C)/(SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesInAnalyzedGithubProjects))/1000 FROM GithubProjectCompletelyAnalyzed;')
+    print('% inline assembly fragment in every popular k LOC')
+    print_query_as_command('inlineAssemblyFragmentInEveryPopularProjectKLoc', 'SELECT (SUM(CLOC_LOC_H+CLOC_LOC_C)/(SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesInAnalyzedGithubProjects, GithubProjectCompletelyAnalyzed WHERE AsmSequencesInAnalyzedGithubProjects.GITHUB_PROJECT_ID = GithubProjectCompletelyAnalyzed.ID AND GITHUB_NR_STARGAZERS >= ' + checked_down_to_stars + '))/1000 FROM GithubProjectCompletelyAnalyzed WHERE GITHUB_NR_STARGAZERS >= ' + checked_down_to_stars)
+    print('% inline assembly fragment in every popular k LOC')
+    print_query_as_command('inlineAssemblyFragmentInEveryKeywordProjectKLoc', 'SELECT (SUM(CLOC_LOC_H+CLOC_LOC_C)/(SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesInAnalyzedGithubProjects, GithubProjectCompletelyAnalyzed WHERE AsmSequencesInAnalyzedGithubProjects.GITHUB_PROJECT_ID = GithubProjectCompletelyAnalyzed.ID AND GITHUB_NR_STARGAZERS <' + checked_down_to_stars + '))/1000 FROM GithubProjectCompletelyAnalyzed WHERE GITHUB_NR_STARGAZERS < ' + checked_down_to_stars)
+    print('% unique inline assembly fragment in every k LOC')
+    print_query_as_command('uniqueInlineAssemblyFragmentInEveryKLoc', 'SELECT (SUM(CLOC_LOC_H+CLOC_LOC_C)/(SELECT COUNT(*) FROM AsmSequencesInAnalyzedGithubProjects))/1000 FROM GithubProjectCompletelyAnalyzed;')
     print('% total number of unique inline assembly snippets')
     print_query_as_command('nrUniqueInlineAssemblySnippets', 'SELECT COUNT(DISTINCT ASM_SEQUENCE_ID) FROM AsmSequencesInAnalyzedGithubProjects;')
+    print('% total number of unique inline assembly snippets per project')
+    print_query_as_command('nrUniqueInlineAssemblySnippetsPerProject', 'SELECT SUM(count) FROM (SELECT COUNT(DISTINCT ASM_SEQUENCE_ID) as count FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID)')
     print('% total number of file-unique inline assembly snippets')
     print_query_as_command('nrFileUniqueInlineAssemblySnippets', 'SELECT COUNT(ASM_SEQUENCE_ID) FROM AsmSequencesInAnalyzedGithubProjects;')
     print('% average number of inline assembly snippets per instruction')
