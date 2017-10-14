@@ -308,9 +308,9 @@ def print_instruction_table(nr_instructions=3):
 def print_mnemonic_table(nr_projects=5):
     """ Prints the table of project-unique instruction sequences that contain non-mnemonic instructions. """
     print_table_start("mnemonictable", columns=3, caption="Instruction sequences that did not use mnemonics", nr_projects=nr_projects)
-    print("instruction & \# projects \\\\ \hline")
-    for row in c.execute('SELECT INSTRUCTIONS, COUNT (DISTINCT AsmSequencesInAnalyzedGithubProjects.GITHUB_PROJECT_ID) count FROM AsmSequencesInAnalyzedGithubProjects, AsmSequence WHERE MNEMONIC = 0 AND AsmSequencesInAnalyzedGithubProjects.ASM_SEQUENCE_ID = AsmSequence.ID GROUP BY AsmSequence.ID HAVING count >= ? ORDER BY count DESC;', (nr_projects,)):
-        print("%s & %s \\\\" % (escape_latex(row[0]), row[1]))
+    print("instruction & \# projects & \% projects \\\\ \hline")
+    for row in c.execute('SELECT INSTRUCTIONS, COUNT (DISTINCT AsmSequencesInAnalyzedGithubProjects.GITHUB_PROJECT_ID) count, 100.0*COUNT (DISTINCT AsmSequencesInAnalyzedGithubProjects.GITHUB_PROJECT_ID)/(SELECT COUNT(*) FROM GithubProjectWithCheckedInlineAsm) FROM AsmSequencesInAnalyzedGithubProjects, AsmSequence WHERE MNEMONIC = 0 AND AsmSequencesInAnalyzedGithubProjects.ASM_SEQUENCE_ID = AsmSequence.ID GROUP BY AsmSequence.ID HAVING count >= ? ORDER BY count DESC;', (nr_projects,)):
+        print("%s & %s & %.1f \\\\" % (escape_latex(row[0]), row[1], row[2]))
     print_table_end("tbl:no-mnemonics")
 
 def print_domain_table(nr_projects=7):
@@ -383,49 +383,49 @@ def print_arithmetic_table(nr_projects=1):
     print_table_start(name="arithmetictable", columns=3, caption="Instructions for arithmetics", nr_projects=nr_projects)
     print("instruction & \# & \% projects \\\\ \hline")
     for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('xor', 'add', 'or', 'sub', 'and', 'inc', 'dec', 'mul', 'adc', 'dec', 'neg', 'lea') AND count >= ?", (nr_projects, )):
-        print("%s & %s & %1.f \\\\" % (row[1], row[2], row[3]))
+        print("%s & %s & %.1f \\\\" % (row[1], row[2], row[3]))
     print_table_end(label="tbl:arithmetic")
 
 def print_fence_table():
     print_table_start(name="fencetable", columns=3, caption="Instructions for fences")
     print("instruction & \# & \% projects \\\\ \hline")
     for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('mfence', 'lfence', 'sfence')"):
-        print("%s & %s & %1.f \\\\" % (row[1], row[2], row[3]))
+        print("%s & %s & %.1f \\\\" % (row[1], row[2], row[3]))
     print_table_end(label="fence-instructions")
 
 def print_hash_table():
     print_table_start(name="hashtable", columns=3, caption="Instructions for hash functions")
     print("instruction & \# & \% projects \\\\ \hline")
     for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('rol', 'ror', 'shl', 'crc32')"):
-        print("%s & %s & %1.f \\\\" % (row[1], row[2], row[3]))
+        print("%s & %s & %.1f \\\\" % (row[1], row[2], row[3]))
     print_table_end(label="hashes")
     
 def print_endianness_table():
     print_table_start(name="tableendian", columns=3, caption="Instructions for endianness conversion")
     print("instruction & \# & \% projects \\\\ \hline")
     for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('lock xchg', 'rol', 'ror', 'bswap')"):
-        print("%s & %s & %1.f \\\\" % (row[1], row[2], row[3]))
+        print("%s & %s & %.1f \\\\" % (row[1], row[2], row[3]))
     print_table_end(label="bswap-intrinsics")
 
 def print_timing_table():
     print_table_start(name="timingtable", columns=3, caption="Instructions for timing")
     print("instruction & \# & \% projects \\\\ \hline")
     for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('rdtsc', 'rdtscp', 'cpuid')"):
-        print("%s & %s & %1.f \\\\" % (row[1], row[2], row[3]))
+        print("%s & %s & %.1f \\\\" % (row[1], row[2], row[3]))
     print_table_end(label="timer-instructions")
 
 def print_move_data_table():
     print_table_start(name="datatable", columns=3, caption="Instructions to move around data")
     print("instruction & \# & \% projects \\\\ \hline")
     for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('mov', 'push', 'pop', 'pushf', 'popf')"):
-        print("%s & %s & %1.f \\\\" % (row[1], row[2], row[3]))
+        print("%s & %s & %.1f \\\\" % (row[1], row[2], row[3]))
     print_table_end(label="tbl:mov")
 
 def print_feature_detection_table():
     print_table_start(name="featuretable", columns=3, caption="Instructions for feature detection")
     print("instruction & \# & \% projects \\\\ \hline")
     for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('cpuid', 'xgetbv')"):
-        print("%s & %s & %1.f \\\\" % (row[1], row[2], row[3]))
+        print("%s & %s & %.1f \\\\" % (row[1], row[2], row[3]))
     print_table_end(label="cpuid-instruction")
     
 def database_integrity_tests():
