@@ -386,6 +386,48 @@ def print_arithmetic_table(nr_projects=1):
         print("%s & %s & %1.f \\\\" % (row[1], row[2], row[3]))
     print_table_end(label="tbl:arithmetic")
 
+def print_fence_table():
+    print_table_start(name="fencetable", columns=3, caption="Instructions for fences")
+    print("instruction & \# & \% projects \\\\ \hline")
+    for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('mfence', 'lfence', 'sfence')"):
+        print("%s & %s & %1.f \\\\" % (row[1], row[2], row[3]))
+    print_table_end(label="fence-instructions")
+
+def print_hash_table():
+    print_table_start(name="hashtable", columns=3, caption="Instructions for hash functions")
+    print("instruction & \# & \% projects \\\\ \hline")
+    for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('rol', 'ror', 'shl', 'crc32')"):
+        print("%s & %s & %1.f \\\\" % (row[1], row[2], row[3]))
+    print_table_end(label="hashes")
+    
+def print_endianness_table():
+    print_table_start(name="tableendian", columns=3, caption="Instructions for endianness conversion")
+    print("instruction & \# & \% projects \\\\ \hline")
+    for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('lock xchg', 'rol', 'ror', 'bswap')"):
+        print("%s & %s & %1.f \\\\" % (row[1], row[2], row[3]))
+    print_table_end(label="bswap-intrinsics")
+
+def print_timing_table():
+    print_table_start(name="timingtable", columns=3, caption="Instructions for timing")
+    print("instruction & \# & \% projects \\\\ \hline")
+    for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('rdtsc', 'rdtscp', 'cpuid')"):
+        print("%s & %s & %1.f \\\\" % (row[1], row[2], row[3]))
+    print_table_end(label="timer-instructions")
+
+def print_move_data_table():
+    print_table_start(name="datatable", columns=3, caption="Instructions to move around data")
+    print("instruction & \# & \% projects \\\\ \hline")
+    for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('mov', 'push', 'pop', 'pushf', 'popf')"):
+        print("%s & %s & %1.f \\\\" % (row[1], row[2], row[3]))
+    print_table_end(label="tbl:mov")
+
+def print_feature_detection_table():
+    print_table_start(name="featuretable", columns=3, caption="Instructions for feature detection")
+    print("instruction & \# & \% projects \\\\ \hline")
+    for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('cpuid', 'xgetbv')"):
+        print("%s & %s & %1.f \\\\" % (row[1], row[2], row[3]))
+    print_table_end(label="cpuid-instruction")
+    
 def database_integrity_tests():
     if c.execute('SELECT COUNT(*) FROM AsmSequencesInGithubProjectUnfiltered WHERE ASM_SEQUENCE_ID NOT IN (SELECT ID FROM AsmSequence)').fetchone()[0] != 0:
         print('Dangling AsmSequence entry!')
@@ -471,6 +513,12 @@ def show_stats(output_dir):
     print_control_flow_table()
     print_rep_table()
     print_arithmetic_table()
+    print_fence_table()
+    print_hash_table()
+    print_endianness_table()
+    print_timing_table()
+    print_move_data_table()
+    print_feature_detection_table()
 
     print('% how often an instruction appears in different projects')
     for row in c.execute('SELECT * FROM InlineAssemblyInstructionsInProjects ORDER BY count desc;'):
