@@ -606,15 +606,16 @@ def show_stats(output_dir):
     print('% total number of file-unique inline assembly snippets')
     print_query_as_command('nrFileUniqueInlineAssemblySnippets', 'SELECT COUNT(ASM_SEQUENCE_ID) FROM AsmSequencesInAnalyzedGithubProjects;')
     print('% average number of inline assembly snippets per instruction')
-    print_query_as_command('avgNrInlineAssemblyInstructionsPerSnippet', 'SELECT AVG(number_instructions * NR_OCCURRENCES) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects;', roundn=True)
+    print_query_as_command('avgNrInlineAssemblyInstructionsPerSnippet', 'SELECT AVG(number_instructions) FROM UniqueSequencesPerProject', roundn=True)
     print('% median number of inline assembly snippets per instruction')
-    print_query_as_command('medianInlineAssemblyInstructionsPerSnippet', 'SELECT number_instructions * NR_OCCURRENCES as nr_instructions FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects ORDER BY nr_instructions LIMIT 1  OFFSET (SELECT (COUNT(*) - 1)  / 2 FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects)')
+    print_query_as_command('medianInlineAssemblyInstructionsPerSnippet', 'SELECT number_instructions FROM UniqueSequencesPerProject ORDER BY number_instructions LIMIT 1  OFFSET (SELECT (COUNT(*) - 1)  / 2 FROM UniqueSequencesPerProject)')
     print('% number of inline assembly snippets with one instruction')
-    print_query_as_command('nrInlineAssemblySnippetsWithOnlyOneInstruction', 'SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects WHERE number_instructions = 1')
+    # CREATE VIEW UniqueSequencesPerProject AS SELECT GITHUB_PROJECT_ID, ASM_SEQUENCE_ID, number_instructions FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID, ASM_SEQUENCE_ID
+    print_query_as_command('nrInlineAssemblySnippetsWithOnlyOneInstruction', 'SELECT COUNT(*) FROM UniqueSequencesPerProject WHERE number_instructions=1')
     print('% percentage of inline assembly snippets with one instruction')
-    print_query_as_command('percentageInlineAssemblySnippetsWithOnlyOneInstruction', 'SELECT 100.0 * SUM(NR_OCCURRENCES) / (SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects WHERE number_instructions = 1', percentage=True)
+    print_query_as_command('percentageInlineAssemblySnippetsWithOnlyOneInstruction', 'SELECT 100.0 * COUNT(*) / (SELECT COUNT(*) From UniqueSequencesPerProject) FROM UniqueSequencesPerProject WHERE number_instructions=1', percentage=True)
     print('% percentage of inline assembly snippets with one or two instructions')
-    print_query_as_command('percentageInlineAssemblySnippetsWithOnlyOneOrTwoInstruction', 'SELECT 100.0 * SUM(NR_OCCURRENCES) / (SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects WHERE number_instructions <= 2', percentage=True)
+    print_query_as_command('percentageInlineAssemblySnippetsWithOnlyOneOrTwoInstruction', 'SELECT 100.0 * COUNT(*) / (SELECT COUNT(*) From UniqueSequencesPerProject) FROM UniqueSequencesPerProject WHERE number_instructions<=2', percentage=True)
     print('% percentage of inline assembly projects with only one unique inline assembly fragment')
     print_query_as_command('percentageInlineAssemblyProjectsWithOneUniqueFragment', 'SELECT COUNT(*) * 100.0 / (SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) FROM AsmSequencesInAnalyzedGithubProjects) FROM (SELECT COUNT(ASM_SEQUENCE_ID) as nr_snippets FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID) WHERE nr_snippets = 1', percentage=True)
     print('% percentage of inline assembly projects with up to ten unique inline assembly fragments')
@@ -723,7 +724,7 @@ def show_stats(output_dir):
     print('nr_instructions;percentage')
     max_instructions_per_snippet = c.execute('SELECT MAX(number_instructions) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects').fetchone()[0]
     for nr_instructions in range(1, max_instructions_per_snippet+1):
-        nr_occurrences = c.execute('SELECT SUM(NR_OCCURRENCES)*100.0 / (SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects WHERE number_instructions <= ?', (nr_instructions,)).fetchone()[0]
+        nr_occurrences = c.execute('SELECT 100.0 * COUNT(*) / (SELECT COUNT(*) From UniqueSequencesPerProject) FROM UniqueSequencesPerProject WHERE number_instructions <= ?', (nr_instructions,)).fetchone()[0]
         print(str(nr_instructions) + ';' + str(nr_occurrences))
     sys.stdout.close()
 
