@@ -586,9 +586,9 @@ def show_stats(output_dir):
     print('\n% average number of inline assembly snippets computed over the set of projects that use inline assembly')
     print_query_as_command('avgNrInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT SUM(NR_OCCURRENCES) as number FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID);', roundn=True)
     print('% median number of inline assembly snippets computed over the set of projects that use inline assembly')
-    print_query_as_command('medianNrInlineAssemblySnippets', 'SELECT SUM(NR_OCCURRENCES) as number FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID ORDER BY number LIMIT 1 OFFSET (SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) / 2 FROM AsmSequencesInAnalyzedGithubProjects)')
+    print_query_as_command('medianNrInlineAssemblySnippets', 'SELECT COUNT(DISTINCT ASM_SEQUENCE_ID) as number FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID ORDER BY number LIMIT 1 OFFSET (SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) / 2 FROM UniqueSequencesPerProject)')
     print('% average number of unique inline assembly snippets computed over the set of projects that use inline assembly')
-    print_query_as_command('avgNrUniqueInlineAssemblySnippets', 'SELECT AVG(number) FROM (SELECT COUNT(DISTINCT ASM_SEQUENCE_ID) as number FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID);', roundn=True)
+    print_query_as_command('avgNrUniqueInlineAssemblySnippets', 'SELECT avg(count) FROM (SELECT COUNT(*) as count FROM UniqueSequencesPerProject GROUP BY GITHUB_PROJECT_ID)', roundn=True)
     print('% total number of inline assembly snippets')
     print_query_as_command('nrInlineAssemblySnippets', 'SELECT SUM(NR_OCCURRENCES) FROM AsmSequencesInAnalyzedGithubProjects;')
     print('% inline assembly fragment in every k LOC')
@@ -617,9 +617,9 @@ def show_stats(output_dir):
     print('% percentage of inline assembly snippets with one or two instructions')
     print_query_as_command('percentageInlineAssemblySnippetsWithOnlyOneOrTwoInstruction', 'SELECT 100.0 * COUNT(*) / (SELECT COUNT(*) From UniqueSequencesPerProject) FROM UniqueSequencesPerProject WHERE number_instructions<=2', percentage=True)
     print('% percentage of inline assembly projects with only one unique inline assembly fragment')
-    print_query_as_command('percentageInlineAssemblyProjectsWithOneUniqueFragment', 'SELECT COUNT(*) * 100.0 / (SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) FROM AsmSequencesInAnalyzedGithubProjects) FROM (SELECT COUNT(ASM_SEQUENCE_ID) as nr_snippets FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID) WHERE nr_snippets = 1', percentage=True)
+    print_query_as_command('percentageInlineAssemblyProjectsWithOneUniqueFragment', 'SELECT 100.0 * COUNT(count) / (SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) FROM UniqueSequencesPerProject) FROM (SELECT COUNT(*) as count FROM UniqueSequencesPerProject GROUP BY GITHUB_PROJECT_ID HAVING count = 1)', percentage=True)
     print('% percentage of inline assembly projects with up to ten unique inline assembly fragments')
-    print_query_as_command('percentageInlineAssemblyProjectsWithUpToTenUniqueFragments', 'SELECT COUNT(*) * 100.0 / (SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) FROM AsmSequencesInAnalyzedGithubProjects) FROM (SELECT COUNT(ASM_SEQUENCE_ID) as nr_snippets FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID) WHERE nr_snippets <= 10', percentage=True)
+    print_query_as_command('percentageInlineAssemblyProjectsWithUpToTenUniqueFragments', 'SELECT 100.0 * COUNT(count) / (SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) FROM UniqueSequencesPerProject) FROM (SELECT COUNT(*) as count FROM UniqueSequencesPerProject GROUP BY GITHUB_PROJECT_ID HAVING count <= 10)', percentage=True)
     print('% inline assembly snippet with most instructions')
     print_query_as_command('nrInstructionsLargestInlineAssemblySnippet', 'SELECT MAX(number_instructions) FROM AsmSequencesWithInstructionCountsInAnalyzedGithubProjects')
     print('% maximum number of inline assembly snippets in a project')
@@ -710,12 +710,13 @@ def show_stats(output_dir):
     sys.stdout.close()
     # SELECT INSTRUCTION, COUNT(GITHUB_PROJECT_ID) as count FROM AsmInstructionsInAnalyzedGithubProjects WHERE GITHUB_PROJECT_ID IN (SELECT GITHUB_PROJECT_ID FROM AsmInstructionsInAnalyzedGithubProjects WHERE INSTRUCTION NOT IN ('rdtsc', 'rdtscp', 'cpuid', 'xgetbv', '', 'prefetch', 'nop', 'int $0x03', 'pause', 'mfence', 'sfence', 'lfence', 'bsr', 'bsf', 'or', 'and', 'xor', 'neg', 'bswap', 'shl', 'rol', 'ror', 'shr', 'lock xchg', 'lock cmpxchg', 'lock xadd', 'crc32', 'mov') GROUP BY GITHUB_PROJECT_ID HAVING COUNT(ASM_INSTRUCTION_ID) =1) GROUP BY INSTRUCTION ORDER BY count DESC
 
-    # number of non-unique snippets per project (TODO: does not completely round up to 100%)
+    # number of unique snippets per project
     sys.stdout = open(output_dir + '/nr_snippets.csv', 'w+')
     print('nr_unique_snippets;percentage')
-    max_nr_snippets = c.execute('SELECT MAX(nr_snippets) FROM (SELECT SUM(NR_OCCURRENCES) as nr_snippets FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID)').fetchone()[0]
-    for nr_snippets in range(1, max_nr_snippets+1):
-        nr_occurrences = c.execute('SELECT COUNT(*) * 100.0 / (SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) FROM AsmSequencesInAnalyzedGithubProjects) FROM (SELECT COUNT(ASM_SEQUENCE_ID) as nr_snippets FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID) WHERE nr_snippets <= ?;', (nr_snippets,)).fetchone()[0]
+    #max_nr_snippets = c.execute('SELECT MAX(nr_snippets) FROM (SELECT SUM(NR_OCCURRENCES) as nr_snippets FROM AsmSequencesInAnalyzedGithubProjects GROUP BY GITHUB_PROJECT_ID)').fetchone()[0]
+    max_nr_unique_snippets = c.execute('SELECT MAX(count) FROM (SELECT COUNT(*) as count FROM UniqueSequencesPerProject GROUP BY GITHUB_PROJECT_ID)').fetchone()[0]
+    for nr_snippets in range(1, max_nr_unique_snippets+1):
+        nr_occurrences = c.execute('SELECT 100.0 * COUNT(count) / (SELECT COUNT(DISTINCT GITHUB_PROJECT_ID) FROM UniqueSequencesPerProject) FROM (SELECT COUNT(*) as count FROM UniqueSequencesPerProject GROUP BY GITHUB_PROJECT_ID HAVING count <= ?)', (nr_snippets,)).fetchone()[0]
         print(str(nr_snippets) + ';' + str(nr_occurrences))
     sys.stdout.close()
 
