@@ -278,7 +278,7 @@ def print_table_start(name, columns, caption, nr_projects=None):
     if nr_projects is None or nr_projects == 1:
         append = ''
     else:
-        append = ' (with at least ' + str(nr_projects) + ' using them)'
+        append = ' (with at least ' + str(nr_projects) + ' projects using them)'
     print("\\newcommand{\\%s}{" % name)
     print("\\begin{table}[]")
     print("\\caption{%s}" % (caption + append))
@@ -341,7 +341,7 @@ def print_domain_table(nr_projects=7):
         print("%s & %s & %.1f & %s \\\\ \hline" % (name, row[0], row[2], descr))
     print_table_end("tbl:domains")
 
-def print_lock_table(nr_projects=1):
+def print_lock_table(nr_projects=4):
     print_table_start(name="locktable", columns=3, caption="Instructions for atomics", nr_projects=nr_projects)
     print("instruction & \# projects & \% projects \\\\ \hline")
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE INSTRUCTION LIKE "lock%" AND count >= ?', (nr_projects, )):
@@ -349,7 +349,7 @@ def print_lock_table(nr_projects=1):
     print_table_end(label="tbl:lock")
 
 def print_set_byte_table(nr_projects=1):
-    print_table_start(name="settable", columns=3, caption="Number of projects that use set-on-condition instructions", nr_projects=nr_projects)
+    print_table_start(name="settable", columns=3, caption="Projects that use set-on-condition instructions", nr_projects=nr_projects)
     print("instruction & \# projects & \% projects \\\\ \hline")
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE INSTRUCTION LIKE "set%" AND count >= ?', (nr_projects, )):
         synonyms = set_synonyms.get(row[1])
@@ -361,16 +361,16 @@ def print_set_byte_table(nr_projects=1):
     print_table_end(label="tbl:settable")
 
 def print_rep_table(nr_projects=1):
-    print_table_start(name="repttable", columns=3, caption="Number of projects that instructions with \code{rep} prefixes", nr_projects=nr_projects)
+    print_table_start(name="repttable", columns=3, caption="Projects that instructions with \code{rep} prefixes", nr_projects=nr_projects)
     print("instruction & \# projects & \% projects \\\\ \hline")
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE (INSTRUCTION LIKE "rep%" or INSTRUCTION LIKE "cld") AND count >= ?', (nr_projects, )):
         print("%s & %s & %.1f \\\\" % (row[1], row[2], row[3]))
     print_table_end(label="tbl:repttable")
 
-def print_control_flow_table(nr_projects=1):
-    print_table_start(name="controlflowtable", columns=3, caption="Number of projects that use control-flow instructions", nr_projects=nr_projects)
+def print_control_flow_table(nr_projects=4):
+    print_table_start(name="controlflowtable", columns=3, caption="Projects that use control-flow instructions", nr_projects=nr_projects)
     print("instruction & \# projects & \% projects \\\\ \hline")
-    for row in c.execute('SELECT * FROM InstructionFrequencies WHERE INSTRUCTION LIKE "j%" OR INSTRUCTION IN ("cmp", "test") AND count >= ?', (nr_projects, )):
+    for row in c.execute('SELECT * FROM InstructionFrequencies WHERE (INSTRUCTION LIKE "j%" OR INSTRUCTION IN ("cmp", "test")) AND count >= ?', (nr_projects, )):
         synonyms = jump_synonyms.get(row[1])
         if synonyms is None:
             label = row[1]
