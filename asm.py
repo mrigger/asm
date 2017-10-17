@@ -292,18 +292,30 @@ def print_table_end(label):
 \\label{%s}
 \\end{table}}""" % label)
 
-def print_instruction_table(nr_instructions=3):
+def print_instruction_table(nr_instructions=2):
     # print latex table
+    nr_entries = c.execute('SELECT COUNT(*) FROM InstructionFrequencies WHERE count >= ' + str(nr_instructions)).fetchone()[0]
+    columns = 3
+    max_column_entries = int((nr_entries+ nr_entries%columns) / columns)
+    entries = [''] * max_column_entries
     print("""\\newcommand{\\instructiontable}{
-\\begin{center}
-\\topcaption{Instruction table that were contained in at least """ + str(nr_instructions) + """ projects}
-\\tablehead{instruction & \\# projects & \\% projects \\\\ \hline}
+\\begin{table*}
+\\caption{Instruction table that were contained in at least """ + str(nr_instructions) + """ projects}
 \\label{tbl:common-instructions}
-\\begin{xtabular}{l|l|l}""")
+\\begin{tabular}{l|l|l """ + ("|l|l|l" * (columns-1)) + """}
+instruction & \\# projects & \\% projects""" + (' & instruction & \\# projects & \\% projects' * (columns-1)) + """ \\\\ \hline
+""")
+    i = 0
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE count >= ' + str(nr_instructions) + ' ORDER BY count desc;'):
-        print("%s & %s & %.1f\%% \\\\" % (escape_latex(row[1]), row[2], row[3]))
-    print("""\\end{xtabular}
-\\end{center}}""")
+        if i >= max_column_entries:
+            entries[i % max_column_entries] += ' & '
+        entries[i % max_column_entries] += "%s & %s & %.1f\%%" % (escape_latex(row[1]), row[2], row[3])
+        i += 1
+    for entry in entries:
+        print(entry + '\\\\')
+    print("""\\end{tabular}
+\\label{tbl:common-instructions}
+\\end{table*}}""")
 
 def print_mnemonic_table(nr_projects=5):
     """ Prints the table of project-unique instruction sequences that contain non-mnemonic instructions. """
