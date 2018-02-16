@@ -272,7 +272,7 @@ def print_as_command(command, content, roundn=False, percentage=False):
     print(('\\newcommand{\\%s}{' + formats + '}') % (command, content, ))
 
 def escape_latex(str):
-    return str.replace('#', '\#').replace('$', '\$')
+    return str.replace('#', '\#').replace('$', '\$').replace('_', '\_')
 
 def print_tabular_start(name, columns, caption, nr_projects=None):
     if nr_projects is None or nr_projects == 1:
@@ -282,11 +282,13 @@ def print_tabular_start(name, columns, caption, nr_projects=None):
     print("\\newcommand{\\%s}{" % name)
     print("\captionof{table}{%s}" % (caption + append,))
     print("\\begin{tabular}{l", end='')
-    for i in range(columns-1): print("|l", end='')
+    for i in range(columns-1): print(" l", end='')
     print("}")
+    print("\\toprule{}")
     
 def print_tabular_end(label):
-    print("""\\end{tabular}
+    print("""\\bottomrule{}
+\\end{tabular}
 \\label{%s}}""" % (label,))
 
 def print_table_start(name, columns, caption, nr_projects=None):
@@ -296,6 +298,7 @@ def print_table_start(name, columns, caption, nr_projects=None):
         append = ' (with at least ' + str(nr_projects) + ' projects using them)'
     print("\\newcommand{\\%s}{" % name)
     print("\\begin{table}[]")
+    print("\\small")
     print("\\caption{%s}" % (caption + append))
     print("\\centering")
     print("\\begin{tabular}{l", end='')
@@ -315,12 +318,13 @@ def print_instruction_table(nr_instructions=2):
     entries = [''] * max_column_entries
     print("""\\newcommand{\\instructiontable}{
 \\begin{table*}
-\\caption{Instruction table that were contained in at least """ + str(nr_instructions) + """ projects}
+\\small{}
+\\caption{Instruction table with instructions that were contained in at least """ + str(nr_instructions) + """ projects}
 \\label{tbl:common-instructions}
 \\begin{tabular}{l r r """ + ("|l r r" * (columns-1)) + """}
 \\toprule{}
 instruction & \\# projects & \\% projects""" + (' & instruction & \\# projects & \\% projects' * (columns-1)) + """ \\\\
-\\midrule{}
+\\midrule{}%
 """)
     i = 0
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE count >= ' + str(nr_instructions) + ' ORDER BY count desc;'):
@@ -342,21 +346,21 @@ instruction & \\# projects & \\% projects""" + (' & instruction & \\# projects &
 def print_mnemonic_table(nr_projects=5):
     """ Prints the table of project-unique instruction sequences that contain non-mnemonic instructions. """
     print_tabular_start("mnemonictable", columns=2, caption="Instruction sequences that did not use mnemonics", nr_projects=nr_projects)
-    print("instruction & \% projects \\\\ \hline")
+    print("instruction & \% projects \\\\")
+    print("\\midrule{}%")
     for row in c.execute('SELECT INSTRUCTIONS, COUNT (DISTINCT AsmSequencesInAnalyzedGithubProjects.GITHUB_PROJECT_ID) count, 100.0*COUNT (DISTINCT AsmSequencesInAnalyzedGithubProjects.GITHUB_PROJECT_ID)/(SELECT COUNT(*) FROM GithubProjectWithCheckedInlineAsm) FROM AsmSequencesInAnalyzedGithubProjects, AsmSequence WHERE MNEMONIC = 0 AND AsmSequencesInAnalyzedGithubProjects.ASM_SEQUENCE_ID = AsmSequence.ID GROUP BY AsmSequence.ID HAVING count >= ? ORDER BY count DESC;', (nr_projects,)):
         print("%s & %.1f \\\\" % (escape_latex(row[0]), row[2]))
     print_tabular_end("tbl:no-mnemonics")
 
-
-
 def print_domain_table(nr_projects=7):
     print("""\\newcommand{\\domaintable}{\\begin{table}[]
-\\caption{Domains of projects that use inline assembly (each domain containing at least """ + str(nr_projects) + """ projects)}
+\\small{}
+\\caption{Domains of projects that used inline assembly (each domain containing at least """ + str(nr_projects) + """ projects)}
 \\centering
 \\begin{tabular}{p{1.8cm} r r p{4.2cm}}
 \\toprule{}
 domain & \\multicolumn{2}{c}{projects} & description \\\\\\cmidrule(){2-3}
- & \\# & \% & \\\\ \\hline
+ & \\# & \% & \\\\
 \midrule{}
 """)
     i = 0
@@ -387,14 +391,16 @@ domain & \\multicolumn{2}{c}{projects} & description \\\\\\cmidrule(){2-3}
 
 def print_lock_table(nr_projects=4):
     print_tabular_start(name="locktable", columns=2, caption="Instructions for atomics", nr_projects=nr_projects)
-    print("instruction & \% projects \\\\ \hline")
+    print("instruction & \% projects \\\\")
+    print("\\midrule{}%")
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE INSTRUCTION LIKE "lock%" AND count >= ?', (nr_projects, )):
         print("%s & %.1f \\\\" % (row[1], row[3]))
     print_tabular_end(label="tbl:lock")
 
 def print_set_byte_table(nr_projects=1):
-    print_tabular_start(name="settable", columns=2, caption="Projects that use set-on-condition instructions", nr_projects=nr_projects)
-    print("instruction & \% projects \\\\ \hline")
+    print_tabular_start(name="settable", columns=2, caption="Instructions that set a value based on a flag", nr_projects=nr_projects)
+    print("instruction & \% projects \\\\")
+    print("\\midrule{}%")
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE INSTRUCTION LIKE "set%" AND count >= ?', (nr_projects, )):
         synonyms = set_synonyms.get(row[1])
         if synonyms is None:
@@ -405,15 +411,17 @@ def print_set_byte_table(nr_projects=1):
     print_tabular_end(label="tbl:settable")
 
 def print_rep_table(nr_projects=1):
-    print_tabular_start(name="repttable", columns=2, caption="Projects that instructions with \code{rep} prefixes", nr_projects=nr_projects)
-    print("instruction & \% projects \\\\ \hline")
+    print_tabular_start(name="repttable", columns=2, caption="Instructions with \code{rep} prefixes", nr_projects=nr_projects)
+    print("instruction & \% projects \\\\")
+    print("\\midrule{}%")
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE (INSTRUCTION LIKE "rep%" or INSTRUCTION LIKE "cld") AND count >= ?', (nr_projects, )):
         print("%s & %.1f \\\\" % (row[1], row[3]))
     print_tabular_end(label="tbl:repttable")
 
 def print_control_flow_table(nr_projects=4):
-    print_tabular_start(name="controlflowtable", columns=2, caption="Projects that use control-flow instructions", nr_projects=nr_projects)
-    print("instruction & \% projects \\\\ \hline")
+    print_tabular_start(name="controlflowtable", columns=2, caption="Instructions for control flow", nr_projects=nr_projects)
+    print("instruction & \% projects \\\\")
+    print("\\midrule{}%")
     for row in c.execute('SELECT * FROM InstructionFrequencies WHERE (INSTRUCTION LIKE "j%" OR INSTRUCTION IN ("cmp", "test")) AND count >= ?', (nr_projects, )):
         synonyms = jump_synonyms.get(row[1])
         if synonyms is None:
@@ -425,52 +433,79 @@ def print_control_flow_table(nr_projects=4):
 
 def print_arithmetic_table(nr_projects=1):
     print_tabular_start(name="arithmetictable", columns=2, caption="Instructions for arithmetics", nr_projects=nr_projects)
-    print("instruction & \% projects \\\\ \hline")
+    print("instruction & \% projects \\\\")
+    print("\\midrule{}%")
     for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('xor', 'add', 'or', 'sub', 'and', 'inc', 'dec', 'mul', 'adc', 'dec', 'neg', 'lea') AND count >= ?", (nr_projects, )):
         print("%s & %.1f \\\\" % (row[1], row[3]))
     print_tabular_end(label="tbl:arithmetic")
 
 def print_fence_table():
     print_tabular_start("fencetable", columns=2, caption="Instruction for fences")
-    print("instruction & \% projects \\\\ \hline")
+    print("instruction & \% projects \\\\")
+    print("\\midrule{}%")
     for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('mfence', 'lfence', 'sfence')"):
         print("%s & %.1f \\\\" % (row[1], row[3]))
     print_tabular_end(label="fence-instructions")
 
 def print_hash_table():
     print_tabular_start("hashtable", columns=2, caption="Instructions for hash functions")
-    print("instruction & \% projects \\\\ \hline")
+    print("instruction & \% projects \\\\")
+    print("\\midrule{}%")
     for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('rol', 'ror', 'shl', 'crc32')"):
         print("%s & %.1f \\\\" % (row[1], row[3]))
     print_tabular_end(label="hashes")
     
 def print_endianness_table():
     print_tabular_start("tableendian", columns=2, caption="Instructions for endianness conversion")
-    print("instruction & \% projects \\\\ \hline")
+    print("instruction & \% projects \\\\")
+    print("\\midrule{}%")
     for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('lock xchg', 'rol', 'ror', 'bswap')"):
         print("%s & %.1f \\\\" % (row[1], row[3]))
     print_tabular_end(label="bswap-intrinsics")
 
 def print_timing_table():
     print_tabular_start(name="timingtable", columns=2, caption="Instructions for timing")
-    print("instruction & \% projects \\\\ \hline")
+    print("instruction & \% projects \\\\")
+    print("\\midrule{}%")
     for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('rdtsc', 'rdtscp', 'cpuid')"):
         print("%s & %.1f \\\\" % (row[1], row[3]))
     print_tabular_end(label="timer-instructions")
 
 def print_move_data_table():
     print_tabular_start(name="datatable", columns=2, caption="Instructions to move around data")
-    print("instruction & \% projects \\\\ \hline")
+    print("instruction & \% projects \\\\")
+    print("\\midrule{}%")
     for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('mov', 'push', 'pop', 'pushf', 'popf')"):
         print("%s & %.1f \\\\" % (row[1], row[3]))
     print_tabular_end(label="tbl:mov")
 
 def print_feature_detection_table():
     print_tabular_start(name="featuretable", columns=2, caption="Instructions for feature detection")
-    print("instruction & \% projects \\\\ \hline")
+    print("instruction & \% projects \\\\")
+    print("\\midrule{}%")
     for row in c.execute("SELECT * FROM InstructionFrequencies WHERE INSTRUCTION IN ('cpuid', 'xgetbv')"):
         print("%s & %.1f \\\\" % (row[1], row[3]))
     print_tabular_end(label="cpuid-instruction")
+
+def print_most_common_files_table(limit=10):
+    print("""\\newcommand{\\mostcommonfilestable}{
+\\captionof{table}{The """ + str(limit) + """ most common file names that contained inline assembly and their average numbers of instructions}
+\\begin{tabular}{p{1.7cm} r r | p{1.2cm} r r}
+\\toprule{}
+file name & projects & instr. & file name & projects & instr. \\\\
+\\midrule{}%
+""")
+    lines = [''] * (limit//2)
+    i = 0
+    for row in c.execute("SELECT file_name, COUNT(DISTINCT GITHUB_PROJECT_ID) as count, AVG(inline_assembly_count) FROM FileNamesWithInlineAssembly GROUP BY file_name ORDER BY count DESC, file_name ASC LIMIT " + str(limit)):
+        idx = i % (limit//2)
+        if lines[idx] != '':
+            lines[idx] += '&'
+        lines[idx] += "%s & %d & %.1f" % (escape_latex(row[0]), row[1], row[2])
+        i += 1
+    for line in lines:
+        print(line + "\\\\")
+    print_tabular_end(label="tbl:mostcommonfiles")
     
 def database_integrity_tests():
     if c.execute('SELECT COUNT(*) FROM AsmSequencesInGithubProjectUnfiltered WHERE ASM_SEQUENCE_ID NOT IN (SELECT ID FROM AsmSequence)').fetchone()[0] != 0:
@@ -563,6 +598,7 @@ def show_stats(output_dir):
     print_timing_table()
     print_move_data_table()
     print_feature_detection_table()
+    print_most_common_files_table()
 
     print('% how often an instruction appears in different projects')
     for row in c.execute('SELECT * FROM InlineAssemblyInstructionsInProjects ORDER BY count desc;'):
