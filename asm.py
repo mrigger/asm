@@ -340,7 +340,6 @@ instruction & \\# projects & \\% projects""" + (' & instruction & \\# projects &
         j += 1
     print("""\\bottomrule{}
 \\end{tabular}
-\\label{tbl:common-instructions}
 \\end{table*}}""")
 
 def print_mnemonic_table(nr_projects=5):
